@@ -6,7 +6,8 @@ class FlowOpenKairo extends HTMLElement {
 
     setConfig(config) {
         if (!config.solar && !config.battery && !config.grid) {
-            throw new Error('Please define at least one entity (solar, battery, grid)');
+            // throw new Error('Please define at least one entity (solar, battery, grid)');
+            // Relaxed check for editor preview
         }
         this.config = config;
     }
@@ -16,8 +17,27 @@ class FlowOpenKairo extends HTMLElement {
         this.render();
     }
 
+    // Define stub config for new cards
+    static getStubConfig() {
+        return {
+            solar: "sensor.solar_power",
+            battery: "sensor.battery_power",
+            grid: "sensor.grid_power",
+            home: "sensor.home_consumption",
+            color_solar: "#ffcc00",
+            color_battery: "#00ff66",
+            color_grid: "#00ccff",
+            color_home: "#ff00ff"
+        };
+    }
+
+    // Define the editor custom element
+    static getConfigElement() {
+        return document.createElement("flow-openkairo-editor");
+    }
+
     getVal(entityId) {
-        if (!entityId || !this._hass.states[entityId]) return 0;
+        if (!entityId || !this._hass || !this._hass.states[entityId]) return 0;
         const val = parseFloat(this._hass.states[entityId].state);
         return isNaN(val) ? 0 : val;
     }
@@ -222,4 +242,146 @@ class FlowOpenKairo extends HTMLElement {
     }
 }
 
+// --- VISUAL EDITOR ---
+class FlowOpenKairoEditor extends HTMLElement {
+    setConfig(config) {
+        this._config = config;
+        this.render();
+    }
+
+    configChanged(newConfig) {
+        const event = new Event("config-changed", {
+            bubbles: true,
+            composed: true,
+        });
+        event.detail = { config: newConfig };
+        this.dispatchEvent(event);
+    }
+
+    set hass(hass) {
+        this._hass = hass;
+        // Re-render only if necessary to update entity pickers, potentially optimizable
+    }
+
+    render() {
+        if (!this.shadowRoot) {
+            this.attachShadow({ mode: 'open' });
+        }
+
+        const c = this._config || {};
+
+        this.shadowRoot.innerHTML = `
+            <style>
+                .row { display: flex; align-items: center; margin-bottom: 12px; }
+                .label { width: 100px; font-weight: bold; }
+                input[type="text"] { flex: 1; padding: 6px; border-radius: 4px; border: 1px solid #ccc; }
+                input[type="color"] { width: 50px; height: 30px; border: none; padding: 0; }
+                .section { margin-bottom: 24px; border-bottom: 1px solid #444; padding-bottom: 8px; font-size: 14px; text-transform: uppercase; color: var(--primary-color); }
+            </style>
+
+            <div class="card-config">
+                
+                <div class="section">Entities</div>
+                
+                <div class="row">
+                    <div class="label">Solar</div>
+                    <ha-entity-picker 
+                        .hass="${this._hass}" 
+                        .value="${c.solar}"
+                        .configValue="${'solar'}"
+                        domain-filter="sensor"
+                        @value-changed="${this._valueChanged}">
+                    </ha-entity-picker>
+                </div>
+
+                <div class="row">
+                    <div class="label">Battery</div>
+                     <ha-entity-picker 
+                        .hass="${this._hass}" 
+                        .value="${c.battery}"
+                        .configValue="${'battery'}"
+                        domain-filter="sensor"
+                        @value-changed="${this._valueChanged}">
+                    </ha-entity-picker>
+                </div>
+
+                <div class="row">
+                    <div class="label">Grid</div>
+                     <ha-entity-picker 
+                        .hass="${this._hass}" 
+                        .value="${c.grid}"
+                        .configValue="${'grid'}"
+                        domain-filter="sensor"
+                        @value-changed="${this._valueChanged}">
+                    </ha-entity-picker>
+                </div>
+
+                <div class="row">
+                    <div class="label">Home</div>
+                     <ha-entity-picker 
+                        .hass="${this._hass}" 
+                        .value="${c.home}"
+                        .configValue="${'home'}"
+                        domain-filter="sensor"
+                        @value-changed="${this._valueChanged}">
+                    </ha-entity-picker>
+                </div>
+
+                <div class="section" style="margin-top: 20px;">Colors</div>
+
+                <div class="row">
+                    <div class="label">Solar Color</div>
+                    <input type="color" value="${c.color_solar || '#ffcc00'}" configValue="color_solar" @change="${this._valueChanged}">
+                </div>
+                 <div class="row">
+                    <div class="label">Battery Color</div>
+                    <input type="color" value="${c.color_battery || '#00ff66'}" configValue="color_battery" @change="${this._valueChanged}">
+                </div>
+                 <div class="row">
+                    <div class="label">Grid Color</div>
+                    <input type="color" value="${c.color_grid || '#00ccff'}" configValue="color_grid" @change="${this._valueChanged}">
+                </div>
+                 <div class="row">
+                    <div class="label">Home Color</div>
+                    <input type="color" value="${c.color_home || '#ff00ff'}" configValue="color_home" @change="${this._valueChanged}">
+                </div>
+
+            </div>
+        `;
+
+        // Bind events manually because @ expressions in innerHTML obviously strictly don't work in raw JS without Lit
+        this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(el => {
+            el.hass = this._hass; // Ensure hass is passed down
+            el.addEventListener('value-changed', (e) => this._valueChanged(e));
+        });
+        this.shadowRoot.querySelectorAll('input').forEach(el => {
+            el.addEventListener('change', (e) => this._valueChanged(e));
+        });
+    }
+
+    _valueChanged(ev) {
+        if (!this._config || !this._hass) return;
+        const target = ev.target;
+        const configValue = target.configValue || target.getAttribute('configValue');
+        const value = ev.detail && ev.detail.value !== undefined ? ev.detail.value : target.value;
+
+        if (this._config[configValue] === value) return;
+
+        const newConfig = {
+            ...this._config,
+            [configValue]: value,
+        };
+        this.configChanged(newConfig);
+    }
+}
+
+
+customElements.define('flow-openkairo-editor', FlowOpenKairoEditor);
 customElements.define('flow-openkairo', FlowOpenKairo);
+window.customCards = window.customCards || [];
+window.customCards.push({
+    type: 'flow-openkairo',
+    name: 'Flow OpenKairo',
+    preview: true,
+    description: 'Neon styled solar flow card'
+});
