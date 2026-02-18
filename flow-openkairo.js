@@ -101,18 +101,16 @@ class FlowOpenKairo extends HTMLElement {
 
     renderDOM(vals) {
         const c = this.config;
-        // Revert to 320px width (Standard Mobile Safe)
         const width = 320;
         const height = 440;
-        const cx = 160; // Center X (320/2)
-        const cy = 150; // Main Center Y
+        const cx = 160;
+        const cy = 150;
 
         const posSolar = { x: cx, y: 50 };
         const posBat = { x: 50, y: cy };
         const posGrid = { x: width - 50, y: cy };
         const posHome = { x: cx, y: 260 };
 
-        // Bottom Row
         const posMiner = { x: 50, y: 380 };
         const posHP = { x: cx, y: 380 };
         const posEV = { x: width - 50, y: 380 };
@@ -247,7 +245,7 @@ class FlowOpenKairo extends HTMLElement {
             ${watts > 800 ? `<circle r="2" fill="${color}" opacity="0.6"><animateMotion dur="${dur}s" begin="${dur / 3}s" repeatCount="indefinite" path="${path}" calcMode="linear" /></circle>` : ''}
         `;
     }
-    getCardSize() { return 6; }
+    getCardSize() { return 10; }
 }
 
 class FlowOpenKairoEditor extends HTMLElement {
@@ -285,21 +283,15 @@ class FlowOpenKairoEditor extends HTMLElement {
         if (!this._initialized) {
             this.shadowRoot.innerHTML = `
                 <style>
-                    :host { display: block; padding: 20px; }
-                    .header { 
-                        font-weight: bold; text-transform: uppercase; 
-                        color: var(--primary-color); margin: 24px 0 12px 0; 
-                        border-bottom: 1px solid var(--divider-color); 
-                    }
+                    :host { display: block; padding: 20px; overflow: visible; }
+                    .row { margin-bottom: 12px; }
+                    .row.inline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+                    .header { font-weight: bold; text-transform: uppercase; color: var(--primary-color); margin: 24px 0 12px 0; border-bottom: 1px solid var(--divider-color); }
                     .header:first-child { margin-top: 0; }
-                    .row { 
-                        display: flex; align-items: center; justify-content: space-between; 
-                        margin-bottom: 12px; gap: 12px;
-                    }
-                    .label { display: flex; align-items: center; width: 130px; font-weight: 500; }
+                    .label { display: flex; align-items: center; margin-bottom: 8px; font-weight: 500; }
                     .label ha-icon { margin-right: 8px; color: var(--secondary-text-color); }
-                    ha-entity-picker { flex: 1; }
-                    input[type="color"] { border: none; background: none; width: 40px; height: 30px; cursor: pointer;}
+                    ha-entity-picker { display: block; width: 100%; box-sizing: border-box; }
+                    input[type="color"] { border: none; background: none; width: 40px; height: 30px; cursor: pointer; }
                 </style>
 
                 <div class="config">
@@ -324,7 +316,7 @@ class FlowOpenKairoEditor extends HTMLElement {
                     ${this.makeColor('color_ev', 'E-Auto')}
 
                     <div class="header">Einstellungen</div>
-                    <div class="row">
+                    <div class="row inline">
                         <div class="label">Batterie-Logik umkehren</div>
                         <ha-switch id="sw-invert"></ha-switch>
                     </div>
@@ -370,13 +362,13 @@ class FlowOpenKairoEditor extends HTMLElement {
         return `
         <div class="row">
             <div class="label"><ha-icon icon="${icon}"></ha-icon> ${name}</div>
-            <ha-entity-picker configValue="${key}" domain-filter="sensor"></ha-entity-picker>
+            <ha-entity-picker configValue="${key}"></ha-entity-picker>
         </div>`;
     }
 
     makeColor(key, name) {
         return `
-        <div class="row">
+        <div class="row inline">
             <div class="label">${name}</div>
             <input type="color" configValue="${key}">
         </div>`;
