@@ -1,37 +1,44 @@
 # Flow OpenKairo
 
-![Preview](https://via.placeholder.com/600x300?text=Flow+OpenKairo+Preview)
+![Vorschau](https://via.placeholder.com/600x300?text=Flow+OpenKairo+Preview)
 
-A lightweight, neon-styled visualization card for SolarFlow systems in Home Assistant.
+Eine leichte, im Neon-Stil gehaltene Visualisierungskarte für SolarFlow-Systeme in Home Assistant.
 
-**Main Features:**
-- ⚡ **Zero Dependencies**: Pure JavaScript, no build required.
-- 🔋 **Smart animations**: Flow speed adapts to power levels.
-- 🌈 **Neon Aesthetics**: Glowing/Neon design.
+**Hauptfunktionen:**
+- ⚡ **Keine Abhängigkeiten**: Reines JavaScript, kein Build erforderlich.
+- 🔋 **Intelligente Animationen**: Die Flussgeschwindigkeit passt sich der Leistung an.
+- 🌈 **Neon-Ästhetik**: Leuchtendes/Neon-Design.
+- 🎨 **Visueller Editor**: Einfache Konfiguration direkt im UI.
 
 ## Installation
 
-### Via HACS (Recommended)
-1. Open HACS > Frontend.
-2. Search for "Flow OpenKairo" and install.
-   *(If you are developing locally, you may need to redownload the card within HACS after updates).*
+### Über HACS (Empfohlen)
+1. Öffnen Sie HACS > Frontend.
+2. Suchen Sie nach "Flow OpenKairo" und installieren Sie es.
+   *(Wenn Sie lokal entwickeln, müssen Sie die Karte nach Updates in HACS möglicherweise erneut herunterladen).*
 
-### Manual
-1. Copy `flow-openkairo.js` to your `config/www/` directory.
-2. Add `/local/flow-openkairo.js` to your Lovelace Resources.
+### Manuell
+1. Kopieren Sie `flow-openkairo.js` in Ihr Verzeichnis `config/www/`.
+2. Fügen Sie `/local/flow-openkairo.js` zu Ihren Lovelace-Ressourcen hinzu.
 
-## Configuration
+## Konfiguration
 
-Add a card to your dashboard:
+Fügen Sie eine Karte zu Ihrem Dashboard hinzu:
+
+### YAML-Konfiguration
 
 ```yaml
 type: custom:flow-openkairo
 solar: sensor.solar_input_power
-battery: sensor.battery_power   # Positive = charging, Negative = discharging
-grid: sensor.grid_power         # Positive = import, Negative = export
+battery: sensor.battery_power   # Positiv = Laden, Negativ = Entladen
+grid: sensor.grid_power         # Positiv = Import, Negativ = Export
 home: sensor.home_consumption
 color_solar: "#ffb74d"          # Optional
 color_battery: "#00e676"        # Optional
 color_grid: "#29b6f6"           # Optional
 color_home: "#d500f9"           # Optional
+invert_battery: false           # Optional: Batterie-Logik umkehren
 ```
+
+### Visueller Editor
+Sie können die Karte nun vollständig über den visuellen Editor von Home Assistant konfigurieren. Wählen Sie einfach Ihre Entitäten aus und passen Sie die Farben nach Ihren Wünschen an.

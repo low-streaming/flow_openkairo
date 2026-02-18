@@ -247,6 +247,7 @@ class FlowOpenKairoEditor extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this._initialized = false;
     }
 
     setConfig(config) {
@@ -276,11 +277,14 @@ class FlowOpenKairoEditor extends HTMLElement {
     render() {
         if (!this._hass || !this._config) return;
 
-        // Render structure only once to avoid losing focus/state, unless minimal
-        // For simplicity in this vanilla implementation, we re-render efficiently or checking existence.
-        // But to fix the "cannot select" issue quickly, we will re-render and re-bind.
+        // CRITICAL FIX: Only set innerHTML once to avoid destroying the pickers while interacting
+        if (this._initialized) {
+            // Just update values if needed, or do nothing if handled by bindings
+            return;
+        }
 
         const c = this._config;
+        this._initialized = true;
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -429,7 +433,9 @@ class FlowOpenKairoEditor extends HTMLElement {
 
             // 2. Set Current Value
             const key = picker.getAttribute('configValue');
-            picker.value = this._config[key];
+            if (this._config[key]) {
+                picker.value = this._config[key];
+            }
 
             // 3. Bind Event
             picker.addEventListener('value-changed', (e) => {
@@ -482,13 +488,19 @@ class FlowOpenKairoEditor extends HTMLElement {
     }
 }
 
+if (!customElements.get('flow-openkairo-editor')) {
+    customElements.define('flow-openkairo-editor', FlowOpenKairoEditor);
+}
+if (!customElements.get('flow-openkairo')) {
+    customElements.define('flow-openkairo', FlowOpenKairo);
+}
 
-customElements.define('flow-openkairo-editor', FlowOpenKairoEditor);
-customElements.define('flow-openkairo', FlowOpenKairo);
 window.customCards = window.customCards || [];
-window.customCards.push({
-    type: 'flow-openkairo',
-    name: 'Flow OpenKairo',
-    preview: true,
-    description: 'Neon styled solar flow card'
-});
+if (!window.customCards.some(c => c.type === "flow-openkairo")) {
+    window.customCards.push({
+        type: 'flow-openkairo',
+        name: 'Flow OpenKairo',
+        preview: true,
+        description: 'Neon styled solar flow card'
+    });
+}
