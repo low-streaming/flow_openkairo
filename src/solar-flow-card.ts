@@ -1,106 +1,126 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { property, state, customElement } from 'lit/decorators.js';
 
+
+import './editor';
+
 // --- Typings ---
 interface HomeAssistant {
-    states: Record<string, { state: string; attributes: Record<string, any> }>;
+  states: Record<string, { state: string; attributes: Record<string, any> }>;
 }
 
 interface NodeConfig {
-    entity?: string;
-    name?: string;
-    icon?: string;
-    color?: string;
+  entity?: string;
+  name?: string;
+  icon?: string;
+  color?: string;
 }
 
 interface FlowOpenKairoConfig {
-    type: string;
-    solar?: NodeConfig;
-    battery?: NodeConfig;
-    grid?: NodeConfig;
-    home?: NodeConfig;
-    // Optional: inverted logic for battery/grid if needed
-    invert_battery?: boolean;
-    invert_grid?: boolean;
+  type: string;
+  solar?: NodeConfig;
+  battery?: NodeConfig;
+  grid?: NodeConfig;
+  home?: NodeConfig;
+  // Optional: inverted logic for battery/grid if needed
+  invert_battery?: boolean;
+  invert_grid?: boolean;
 }
 
 @customElement('flow-openkairo-card')
 export class FlowOpenKairoCard extends LitElement {
-    @property({ attribute: false }) public hass!: HomeAssistant;
-    @state() private config!: FlowOpenKairoConfig;
+  @property({ attribute: false }) public hass!: HomeAssistant;
+  @state() private config!: FlowOpenKairoConfig;
 
-    // Configuration defaults
-    private defaults = {
-        solar: { icon: 'mdi:solar-power', color: '#ffb74d', name: 'Solar' },
-        battery: { icon: 'mdi:battery-high', color: '#64dd17', name: 'Battery' },
-        grid: { icon: 'mdi:transmission-tower', color: '#29b6f6', name: 'Grid' },
-        home: { icon: 'mdi:home-lightning', color: '#ab47bc', name: 'Home' },
+  // Configuration defaults
+  private defaults = {
+    solar: { icon: 'mdi:solar-power', color: '#ffb74d', name: 'Solar' },
+    battery: { icon: 'mdi:battery-high', color: '#64dd17', name: 'Battery' },
+    grid: { icon: 'mdi:transmission-tower', color: '#29b6f6', name: 'Grid' },
+    home: { icon: 'mdi:home-lightning', color: '#ab47bc', name: 'Home' },
+  };
+
+  // --- Editor Configuration ---
+  public static getConfigElement() {
+    return document.createElement('flow-openkairo-card-editor');
+  }
+
+  public static getStubConfig() {
+    return {
+      type: 'custom:flow-openkairo-card',
+      solar: { entity: '', name: 'Solar' },
+      battery: { entity: '', name: 'Battery' },
+      grid: { entity: '', name: 'Grid' },
+      home: { entity: '', name: 'Home' },
+      invert_battery: false,
+      invert_grid: false,
     };
+  }
 
-    public setConfig(config: FlowOpenKairoConfig): void {
-        if (!config) throw new Error('Invalid configuration');
-        this.config = config;
-    }
+  public setConfig(config: FlowOpenKairoConfig): void {
+    if (!config) throw new Error('Invalid configuration');
+    this.config = config;
+  }
 
-    // --- Helpers ---
+  // --- Helpers ---
 
-    // Get numeric value from entity
-    private getValue(entityId: string | undefined): number {
-        if (!entityId || !this.hass.states[entityId]) return 0;
-        const val = parseFloat(this.hass.states[entityId].state);
-        return isNaN(val) ? 0 : val;
-    }
+  // Get numeric value from entity
+  private getValue(entityId: string | undefined): number {
+    if (!entityId || !this.hass.states[entityId]) return 0;
+    const val = parseFloat(this.hass.states[entityId].state);
+    return isNaN(val) ? 0 : val;
+  }
 
-    // Calculate flow duration (speed) based on power
-    // Higher power = faster animation (lower duration)
-    private getAnimationDuration(watts: number): number {
-        if (watts <= 0) return 0;
-        // Map 0-5000W to roughly 5s-0.5s
-        const minDur = 0.5;
-        const maxDur = 5;
-        const maxPower = 5000;
+  // Calculate flow duration (speed) based on power
+  // Higher power = faster animation (lower duration)
+  private getAnimationDuration(watts: number): number {
+    if (watts <= 0) return 0;
+    // Map 0-5000W to roughly 5s-0.5s
+    const minDur = 0.5;
+    const maxDur = 5;
+    const maxPower = 5000;
 
-        // Logarithmic scale often looks better
-        // duration = maxDur - (log(watts)/log(maxPower) * (maxDur-minDur))
-        // Simple linear inverse for now:
-        const factor = Math.min(watts / maxPower, 1);
-        return maxDur - (factor * (maxDur - minDur));
-    }
+    // Logarithmic scale often looks better
+    // duration = maxDur - (log(watts)/log(maxPower) * (maxDur-minDur))
+    // Simple linear inverse for now:
+    const factor = Math.min(watts / maxPower, 1);
+    return maxDur - (factor * (maxDur - minDur));
+  }
 
-    protected render() {
-        if (!this.config || !this.hass) return nothing;
+  protected render() {
+    if (!this.config || !this.hass) return nothing;
 
-        // 1. Get Values
-        const solarVal = this.getValue(this.config.solar?.entity);
+    // 1. Get Values
+    const solarVal = this.getValue(this.config.solar?.entity);
 
-        let batteryVal = this.getValue(this.config.battery?.entity);
-        if (this.config.invert_battery) batteryVal *= -1;
+    let batteryVal = this.getValue(this.config.battery?.entity);
+    if (this.config.invert_battery) batteryVal *= -1;
 
-        let gridVal = this.getValue(this.config.grid?.entity);
-        if (this.config.invert_grid) gridVal *= -1;
+    let gridVal = this.getValue(this.config.grid?.entity);
+    if (this.config.invert_grid) gridVal *= -1;
 
-        const homeVal = this.getValue(this.config.home?.entity);
+    const homeVal = this.getValue(this.config.home?.entity);
 
-        // 2. Determine Flow Directions
-        // Solar is always source
-        const solarActive = solarVal > 10; // Threshold 10W
+    // 2. Determine Flow Directions
+    // Solar is always source
+    const solarActive = solarVal > 10; // Threshold 10W
 
-        // Battery: Positive = Charging (Sink), Negative = Discharging (Source)
-        const batteryCharging = batteryVal > 10;
-        const batteryDischarging = batteryVal < -10;
-        const batteryPwr = Math.abs(batteryVal);
+    // Battery: Positive = Charging (Sink), Negative = Discharging (Source)
+    const batteryCharging = batteryVal > 10;
+    const batteryDischarging = batteryVal < -10;
+    const batteryPwr = Math.abs(batteryVal);
 
-        // Grid: Positive = Import (Source), Negative = Export (Sink)
-        const gridImport = gridVal > 10;
-        const gridExport = gridVal < -10;
-        const gridPwr = Math.abs(gridVal);
+    // Grid: Positive = Import (Source), Negative = Export (Sink)
+    const gridImport = gridVal > 10;
+    const gridExport = gridVal < -10;
+    const gridPwr = Math.abs(gridVal);
 
-        // Home is always sink
-        const homeActive = homeVal > 10;
+    // Home is always sink
+    const homeActive = homeVal > 10;
 
 
-        // 3. Render
-        return html`
+    // 3. Render
+    return html`
       <ha-card>
         <div class="card-content">
           <div class="flow-container">
@@ -141,16 +161,16 @@ export class FlowOpenKairoCard extends LitElement {
         </div>
       </ha-card>
     `;
-    }
+  }
 
-    private renderNode(type: 'solar' | 'battery' | 'grid' | 'home', value: number, config?: NodeConfig) {
-        const def = this.defaults[type];
-        const color = config?.color || def.color;
-        const icon = config?.icon || def.icon;
-        const name = config?.name || def.name;
-        const active = value > 5;
+  private renderNode(type: 'solar' | 'battery' | 'grid' | 'home', value: number, config?: NodeConfig) {
+    const def = this.defaults[type];
+    const color = config?.color || def.color;
+    const icon = config?.icon || def.icon;
+    const name = config?.name || def.name;
+    const active = value > 5;
 
-        return html`
+    return html`
       <div class="node ${type}" ?active=${active} style="--node-color: ${color}">
         <ha-icon icon="${icon}"></ha-icon>
         <div class="info">
@@ -159,20 +179,20 @@ export class FlowOpenKairoCard extends LitElement {
         </div>
       </div>
     `;
-    }
+  }
 
-    // Renders a curved line with animated dots
-    private renderFlow(x1: number, y1: number, x2: number, y2: number, power: number, color?: string) {
-        const dur = this.getAnimationDuration(power);
-        const pathId = `path-${x1}-${y1}-${x2}-${y2}`;
-        const flowColor = color || '#fff';
+  // Renders a curved line with animated dots
+  private renderFlow(x1: number, y1: number, x2: number, y2: number, power: number, color?: string) {
+    const dur = this.getAnimationDuration(power);
+    const pathId = `path-${x1}-${y1}-${x2}-${y2}`;
+    const flowColor = color || '#fff';
 
-        // Simple Quadratic Bezier for curve
-        // Control point (cp) logic: pull towards center (200, 150) slightly to make it curve?
-        // Or just straight lines for now to be safe, Lumina uses straight or slight curves.
-        const pathD = `M${x1},${y1} L${x2},${y2}`;
+    // Simple Quadratic Bezier for curve
+    // Control point (cp) logic: pull towards center (200, 150) slightly to make it curve?
+    // Or just straight lines for now to be safe, Lumina uses straight or slight curves.
+    const pathD = `M${x1},${y1} L${x2},${y2}`;
 
-        return html`
+    return html`
       <path id="${pathId}" class="flow-path" d="${pathD}" stroke="${flowColor}" stroke-opacity="0.3" stroke-width="2" fill="none" />
       <circle r="4" fill="${flowColor}">
         <animateMotion dur="${dur}s" repeatCount="indefinite" calcMode="linear">
@@ -188,9 +208,9 @@ export class FlowOpenKairoCard extends LitElement {
         </circle>
       ` : nothing}
     `;
-    }
+  }
 
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
     }
@@ -280,15 +300,15 @@ export class FlowOpenKairoCard extends LitElement {
 
   `;
 
-    // Card Layout Config
-    getCardSize() { return 6; }
+  // Card Layout Config
+  getCardSize() { return 6; }
 }
 
 // Register
 (window as any).customCards = (window as any).customCards || [];
 (window as any).customCards.push({
-    type: 'flow-openkairo-card',
-    name: 'Flow OpenKairo Card',
-    preview: true,
-    description: 'Custom SolarFlow visualization',
+  type: 'flow-openkairo-card',
+  name: 'Flow OpenKairo Card',
+  preview: true,
+  description: 'Custom SolarFlow visualization',
 });
