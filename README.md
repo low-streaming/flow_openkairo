@@ -28,7 +28,7 @@ Fügen Sie eine Karte zu Ihrem Dashboard hinzu:
 ### YAML-Konfiguration
 
 ```yaml
-type: custom:flow-openkairo
+type: custom:flow-openkairo-card
 solar: sensor.solar_input_power
 battery: sensor.battery_power   # Positiv = Laden, Negativ = Entladen
 grid: sensor.grid_power         # Positiv = Import, Negativ = Export
