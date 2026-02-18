@@ -33,11 +33,18 @@ solar: sensor.solar_input_power
 battery: sensor.battery_power   # Positiv = Laden, Negativ = Entladen
 grid: sensor.grid_power         # Positiv = Import, Negativ = Export
 home: sensor.home_consumption
-color_solar: "#ffb74d"          # Optional
-color_battery: "#00e676"        # Optional
-color_grid: "#29b6f6"           # Optional
-color_home: "#d500f9"           # Optional
+
+# Optionale einfache Farb-Anpassung
 invert_battery: false           # Optional: Batterie-Logik umkehren
+invert_grid: false              # Optional: Netz-Logik umkehren
+
+# Erweiterte Konfiguration (Optional)
+# Sie können statt Entitäts-IDs auch Objekte verwenden, um Farben und Icons pro Element zu überschreiben:
+# solar:
+#   entity: sensor.solar_input_power
+#   name: "Mein Solar"
+#   icon: "mdi:sun-wireless"
+#   color: "#ff9800"
 ```
 
 ### Visueller Editor

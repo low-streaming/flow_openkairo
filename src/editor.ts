@@ -12,26 +12,35 @@ export class FlowOpenKairoCardEditor extends LitElement {
     }
 
     private _getEntity(key: string): string {
+        if (!this._config || !this._config[key]) return '';
         const conf = this._config[key];
-        if (!conf) return '';
         if (typeof conf === 'string') return conf;
         return conf.entity || '';
     }
 
-    private _entityChanged(ev: any, key: string) {
-        if (!this._config || !this.hass) {
-            return;
-        }
+    private _valueChanged(ev: any, key: string) {
+        if (!this._config || !this.hass) return;
 
         const value = ev.detail.value;
-
-        // Preserve existing config if object, else create new object
         const currentConf = this._config[key];
+
+        // Always try to maintain the existing type (string or object)
+        // If it doesn't exist, start as string for simplicity
         let newKeyConf;
         if (typeof currentConf === 'object' && currentConf !== null) {
             newKeyConf = { ...currentConf, entity: value };
         } else {
-            newKeyConf = { entity: value };
+            // If it was a string or undefined, update as string to keep config simple
+            // unless user explicitly wants advanced config (which we can add later)
+            // But wait, the user wanted advanced config (colors). 
+            // Let's stick to the flexible approach:
+            // If it's a string, update the string. 
+            // If it's an object, update the entity property.
+            if (currentConf === undefined || typeof currentConf === 'string') {
+                newKeyConf = value;
+            } else {
+                newKeyConf = { ...currentConf, entity: value };
+            }
         }
 
         const newConfig = {
@@ -39,27 +48,24 @@ export class FlowOpenKairoCardEditor extends LitElement {
             [key]: newKeyConf
         };
 
-        this._FireConfigChanged(newConfig);
+        this._fireConfigChanged(newConfig);
     }
 
     private _toggleChanged(ev: any, key: string) {
         if (!this._config || !this.hass) return;
+        const value = ev.target.checked;
 
-        const target = ev.target;
-        // Invert logic: switch checked = true means "invert" usually
-        const checked = target.checked;
-
-        if (this._config[key] === checked) return;
+        if (this._config[key] === value) return;
 
         const newConfig = {
             ...this._config,
-            [key]: checked
+            [key]: value
         };
 
-        this._FireConfigChanged(newConfig);
+        this._fireConfigChanged(newConfig);
     }
 
-    private _FireConfigChanged(config: any) {
+    private _fireConfigChanged(config: any) {
         this._config = config;
         const event = new CustomEvent("config-changed", {
             detail: { config: config },
@@ -70,89 +76,52 @@ export class FlowOpenKairoCardEditor extends LitElement {
     }
 
     render() {
-        if (!this.hass || !this._config) {
-            return nothing;
-        }
+        if (!this.hass || !this._config) return nothing;
 
         return html`
             <div class="card-config">
                 <h3>Entities</h3>
+                ${this._renderEntityPicker('Solar Power', 'solar')}
+                ${this._renderEntityPicker('Battery Power', 'battery')}
+                ${this._renderEntityPicker('Grid Power', 'grid')}
+                ${this._renderEntityPicker('Home Consumption', 'home')}
                 
-                <div class="option">
-                    <ha-entity-picker
-                        label="Solar Grid/Power (W)"
-                        .hass=${this.hass}
-                        .value=${this._getEntity('solar')}
-                        @value-changed=${(ev: any) => this._entityChanged(ev, 'solar')}
-                        allow-custom-entity
-                    ></ha-entity-picker>
-                </div>
-
-                <div class="option">
-                    <ha-entity-picker
-                        label="Battery Power (W)"
-                        .hass=${this.hass}
-                        .value=${this._getEntity('battery')}
-                        @value-changed=${(ev: any) => this._entityChanged(ev, 'battery')}
-                        allow-custom-entity
-                    ></ha-entity-picker>
-                </div>
-
-                <div class="option">
-                    <ha-entity-picker
-                        label="Grid Power (W)"
-                        .hass=${this.hass}
-                        .value=${this._getEntity('grid')}
-                        @value-changed=${(ev: any) => this._entityChanged(ev, 'grid')}
-                        allow-custom-entity
-                    ></ha-entity-picker>
-                </div>
-
-                <div class="option">
-                    <ha-entity-picker
-                        label="Home Consumption (W)"
-                        .hass=${this.hass}
-                        .value=${this._getEntity('home')}
-                        @value-changed=${(ev: any) => this._entityChanged(ev, 'home')}
-                        allow-custom-entity
-                    ></ha-entity-picker>
-                </div>
-
                 <h3>Options</h3>
-                <div class="row">
-                    <ha-switch
-                        .checked=${this._config.invert_battery !== false}
-                        @change=${(ev: any) => this._toggleChanged(ev, 'invert_battery')}
-                    ></ha-switch>
-                    <span>Invert Battery Logic (Standard: +Charge/-Discharge)</span>
-                </div>
-                <div class="row">
-                    <ha-switch
-                        .checked=${this._config.invert_grid !== false}
-                        @change=${(ev: any) => this._toggleChanged(ev, 'invert_grid')}
-                    ></ha-switch>
-                    <span>Invert Grid Logic (Standard: +Import/-Export)</span>
-                </div>
+                ${this._renderSwitch('Invert Battery (Active = Charge)', 'invert_battery')}
+                ${this._renderSwitch('Invert Grid (Active = Import)', 'invert_grid')}
+            </div>
+        `;
+    }
+
+    private _renderEntityPicker(label: string, key: string) {
+        return html`
+            <div class="option">
+                <ha-entity-picker
+                    .label=${label}
+                    .hass=${this.hass}
+                    .value=${this._getEntity(key)}
+                    @value-changed=${(ev: any) => this._valueChanged(ev, key)}
+                    allow-custom-entity
+                ></ha-entity-picker>
+            </div>
+        `;
+    }
+
+    private _renderSwitch(label: string, key: string) {
+        return html`
+            <div class="row">
+                <ha-switch
+                    .checked=${this._config[key] === true}
+                    @change=${(ev: any) => this._toggleChanged(ev, key)}
+                ></ha-switch>
+                <span>${label}</span>
             </div>
         `;
     }
 
     static styles = css`
-        .card-config {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            padding: 16px 0;
-        }
-        .option {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .card-config { display: flex; flex-direction: column; gap: 16px; padding: 16px 0; }
+        .option { display: flex; flex-direction: column; gap: 8px; }
+        .row { display: flex; align-items: center; gap: 12px; }
     `;
 }
