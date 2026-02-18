@@ -18,10 +18,10 @@ interface NodeConfig {
 
 interface FlowOpenKairoConfig {
   type: string;
-  solar?: NodeConfig;
-  battery?: NodeConfig;
-  grid?: NodeConfig;
-  home?: NodeConfig;
+  solar?: NodeConfig | string;
+  battery?: NodeConfig | string;
+  grid?: NodeConfig | string;
+  home?: NodeConfig | string;
   // Optional: inverted logic for battery/grid if needed
   invert_battery?: boolean;
   invert_grid?: boolean;
@@ -64,8 +64,15 @@ export class FlowOpenKairoCard extends LitElement {
 
   // --- Helpers ---
 
+  private getEntityId(config: NodeConfig | string | undefined): string | undefined {
+    if (!config) return undefined;
+    if (typeof config === 'string') return config;
+    return config.entity;
+  }
+
   // Get numeric value from entity
-  private getValue(entityId: string | undefined): number {
+  private getValue(config: NodeConfig | string | undefined): number {
+    const entityId = this.getEntityId(config);
     if (!entityId || !this.hass.states[entityId]) return 0;
     const val = parseFloat(this.hass.states[entityId].state);
     return isNaN(val) ? 0 : val;
@@ -91,15 +98,15 @@ export class FlowOpenKairoCard extends LitElement {
     if (!this.config || !this.hass) return nothing;
 
     // 1. Get Values
-    const solarVal = this.getValue(this.config.solar?.entity);
+    const solarVal = this.getValue(this.config.solar);
 
-    let batteryVal = this.getValue(this.config.battery?.entity);
+    let batteryVal = this.getValue(this.config.battery);
     if (this.config.invert_battery) batteryVal *= -1;
 
-    let gridVal = this.getValue(this.config.grid?.entity);
+    let gridVal = this.getValue(this.config.grid);
     if (this.config.invert_grid) gridVal *= -1;
 
-    const homeVal = this.getValue(this.config.home?.entity);
+    const homeVal = this.getValue(this.config.home);
 
     // 2. Determine Flow Directions
     // Solar is always source
@@ -135,39 +142,43 @@ export class FlowOpenKairoCard extends LitElement {
             <svg class="flow-lines" viewBox="0 0 400 300">
                <defs>
                  <linearGradient id="grad-solar" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100%">
-                   <stop offset="0%" style="stop-color:${this.config.solar?.color || this.defaults.solar.color}" />
-                   <stop offset="100%" style="stop-color:${this.config.home?.color || this.defaults.home.color}" />
+                   <stop offset="0%" style="stop-color:${this.getColor(this.config.solar, this.defaults.solar.color)}" />
+                   <stop offset="100%" style="stop-color:${this.getColor(this.config.home, this.defaults.home.color)}" />
                  </linearGradient>
-                 <!-- Add other gradients dynamically or use solid colors -->
                </defs>
 
                <!-- Solar -> Home (Direct) -->
-               ${solarActive ? this.renderFlow(200, 60, 200, 240, solarVal, this.config.solar?.color) : nothing}
+               ${solarActive ? this.renderFlow(200, 60, 200, 240, solarVal, this.getColor(this.config.solar, this.defaults.solar.color)) : nothing}
 
                <!-- Solar -> Battery (Charging) -->
-               ${batteryCharging ? this.renderFlow(200, 60, 80, 150, batteryPwr, this.config.solar?.color) : nothing}
+               ${batteryCharging ? this.renderFlow(200, 60, 80, 150, batteryPwr, this.getColor(this.config.solar, this.defaults.solar.color)) : nothing}
 
                <!-- Battery -> Home (Discharging) -->
-               ${batteryDischarging ? this.renderFlow(80, 150, 200, 240, batteryPwr, this.config.battery?.color) : nothing}
+               ${batteryDischarging ? this.renderFlow(80, 150, 200, 240, batteryPwr, this.getColor(this.config.battery, this.defaults.battery.color)) : nothing}
                
                <!-- Grid -> Home (Import) -->
-               ${gridImport ? this.renderFlow(320, 150, 200, 240, gridPwr, this.config.grid?.color) : nothing}
+               ${gridImport ? this.renderFlow(320, 150, 200, 240, gridPwr, this.getColor(this.config.grid, this.defaults.grid.color)) : nothing}
 
                <!-- Solar -> Grid (Export) - Complex path? Or simple? -->
-               ${gridExport && solarActive ? this.renderFlow(200, 60, 320, 150, gridPwr, this.config.solar?.color) : nothing}
+               ${gridExport && solarActive ? this.renderFlow(200, 60, 320, 150, gridPwr, this.getColor(this.config.solar, this.defaults.solar.color)) : nothing}
             </svg>
-
           </div>
         </div>
       </ha-card>
     `;
   }
 
-  private renderNode(type: 'solar' | 'battery' | 'grid' | 'home', value: number, config?: NodeConfig) {
+  private getColor(config: NodeConfig | string | undefined, defaultColor: string): string {
+    if (!config || typeof config === 'string') return defaultColor;
+    return config.color || defaultColor;
+  }
+
+  private renderNode(type: 'solar' | 'battery' | 'grid' | 'home', value: number, config?: NodeConfig | string) {
     const def = this.defaults[type];
-    const color = config?.color || def.color;
-    const icon = config?.icon || def.icon;
-    const name = config?.name || def.name;
+    const isObj = config && typeof config !== 'string';
+    const color = (isObj ? (config as NodeConfig).color : undefined) || def.color;
+    const icon = (isObj ? (config as NodeConfig).icon : undefined) || def.icon;
+    const name = (isObj ? (config as NodeConfig).name : undefined) || def.name;
     const active = value > 5;
 
     return html`

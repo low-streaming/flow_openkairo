@@ -11,6 +11,13 @@ export class FlowOpenKairoCardEditor extends LitElement {
         this._config = config;
     }
 
+    private _getEntity(key: string): string {
+        const conf = this._config[key];
+        if (!conf) return '';
+        if (typeof conf === 'string') return conf;
+        return conf.entity || '';
+    }
+
     private _entityChanged(ev: any, key: string) {
         if (!this._config || !this.hass) {
             return;
@@ -18,16 +25,18 @@ export class FlowOpenKairoCardEditor extends LitElement {
 
         const value = ev.detail.value;
 
-        if (this._config[key]?.entity === value) {
-            return;
+        // Preserve existing config if object, else create new object
+        const currentConf = this._config[key];
+        let newKeyConf;
+        if (typeof currentConf === 'object' && currentConf !== null) {
+            newKeyConf = { ...currentConf, entity: value };
+        } else {
+            newKeyConf = { entity: value };
         }
 
         const newConfig = {
             ...this._config,
-            [key]: {
-                ...this._config[key],
-                entity: value
-            }
+            [key]: newKeyConf
         };
 
         this._FireConfigChanged(newConfig);
@@ -73,7 +82,7 @@ export class FlowOpenKairoCardEditor extends LitElement {
                     <ha-entity-picker
                         label="Solar Grid/Power (W)"
                         .hass=${this.hass}
-                        .value=${this._config.solar?.entity || ''}
+                        .value=${this._getEntity('solar')}
                         @value-changed=${(ev: any) => this._entityChanged(ev, 'solar')}
                         allow-custom-entity
                     ></ha-entity-picker>
@@ -83,7 +92,7 @@ export class FlowOpenKairoCardEditor extends LitElement {
                     <ha-entity-picker
                         label="Battery Power (W)"
                         .hass=${this.hass}
-                        .value=${this._config.battery?.entity || ''}
+                        .value=${this._getEntity('battery')}
                         @value-changed=${(ev: any) => this._entityChanged(ev, 'battery')}
                         allow-custom-entity
                     ></ha-entity-picker>
@@ -93,7 +102,7 @@ export class FlowOpenKairoCardEditor extends LitElement {
                     <ha-entity-picker
                         label="Grid Power (W)"
                         .hass=${this.hass}
-                        .value=${this._config.grid?.entity || ''}
+                        .value=${this._getEntity('grid')}
                         @value-changed=${(ev: any) => this._entityChanged(ev, 'grid')}
                         allow-custom-entity
                     ></ha-entity-picker>
@@ -103,7 +112,7 @@ export class FlowOpenKairoCardEditor extends LitElement {
                     <ha-entity-picker
                         label="Home Consumption (W)"
                         .hass=${this.hass}
-                        .value=${this._config.home?.entity || ''}
+                        .value=${this._getEntity('home')}
                         @value-changed=${(ev: any) => this._entityChanged(ev, 'home')}
                         allow-custom-entity
                     ></ha-entity-picker>
