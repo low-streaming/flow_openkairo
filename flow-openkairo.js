@@ -51,8 +51,6 @@ class FlowOpenKairo extends HTMLElement {
 
     getDur(w) {
         if (w < 1) return 0;
-        // High power = low duration (fast)
-        // 1000W -> 0.5s, 10W -> 4s
         return Math.max(0.5, 4 - (Math.log(w + 1) / 1.5));
     }
 
@@ -67,7 +65,6 @@ class FlowOpenKairo extends HTMLElement {
         const heatpump = this.getVal(this.config.heatpump);
         const ev = this.getVal(this.config.ev);
 
-        // Logic Flags
         const isSolar = solar > 1;
         let isBatCharge = false;
         let isBatDischarge = false;
@@ -88,7 +85,6 @@ class FlowOpenKairo extends HTMLElement {
 
         const newStateKey = [isSolar, isBatCharge, isBatDischarge, isGridImport, isGridExport, isHome, isMiner, isHP, isEV].map(b => b ? '1' : '0').join('');
 
-        // If layout/flows change, full render
         if (this._stateKey !== newStateKey || !this.shadowRoot.innerHTML) {
             this._stateKey = newStateKey;
             this.renderDOM({
@@ -96,7 +92,6 @@ class FlowOpenKairo extends HTMLElement {
                 isSolar, isBatCharge, isBatDischarge, isGridImport, isGridExport, isHome, isMiner, isHP, isEV
             });
         } else {
-            // Just update values and speeds
             this.updateValues({
                 solar, battery, grid, home, miner, heatpump, ev,
                 isSolar, isBatCharge, isBatDischarge, isGridImport, isGridExport, isHome, isMiner, isHP, isEV
@@ -224,7 +219,7 @@ class FlowOpenKairo extends HTMLElement {
     }
 
     renderNode(val, icon, label, pos, color, active, id) {
-        const alpha = color + '40'; // Simple hex alpha approx
+        const alpha = color + '40';
         return `
         <div class="node" active="${active}" style="left:${pos.x}px; top:${pos.y}px; --color: ${color}; --color-alpha: ${alpha}">
             <div class="icon-circle"><ha-icon icon="${icon}"></ha-icon></div>
@@ -263,59 +258,82 @@ class FlowOpenKairoEditor extends HTMLElement {
         this._hass = hass;
         if (this.shadowRoot) this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => { if (p.hass !== hass) p.hass = hass; });
     }
-    configChanged(newConfig) { this.dispatchEvent(new Event("config-changed", { bubbles: true, composed: true, detail: { config: newConfig } })); }
+    configChanged(newConfig) {
+        this.dispatchEvent(new Event("config-changed", { bubbles: true, composed: true, detail: { config: newConfig } }));
+    }
 
     render() {
         if (!this._hass || !this._config) return;
-        if (!this._initialized) {
-            this.shadowRoot.innerHTML = `
-                <style>
-                    :host { display: block; padding: 20px; }
-                    .header { font-weight: bold; text-transform: uppercase; color: var(--primary-color); margin: 24px 0 12px 0; border-bottom: 1px solid var(--divider-color); }
-                    .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
-                    .label { display: flex; align-items: center; width: 130px; font-weight: 500; }
-                    ha-entity-picker { flex: 1; }
-                    input[type="color"] { border: none; background: none; width: 40px; height: 30px; cursor: pointer;}
-                </style>
-                <div class="config">
-                    <div class="header">Energiequellen</div>
-                    ${this.makeRow('solar', 'Solar', 'mdi:solar-power')}
-                    ${this.makeRow('battery', 'Batterie', 'mdi:battery-high')}
-                    ${this.makeRow('grid', 'Netz', 'mdi:transmission-tower')}
-                    ${this.makeRow('home', 'Haus', 'mdi:home-lightning')}
-                    <div class="header">Zusätzliche Verbraucher</div>
-                    ${this.makeRow('miner', 'Miner', 'mdi:pickaxe')}
-                    ${this.makeRow('heatpump', 'Wärmepumpe', 'mdi:heat-pump')}
-                    ${this.makeRow('ev', 'E-Auto', 'mdi:car-electric')}
-                    <div class="header">Farben</div>
-                    ${this.makeColor('color_solar', 'Solar')}
-                    ${this.makeColor('color_battery', 'Batterie')}
-                    ${this.makeColor('color_grid', 'Netz')}
-                    ${this.makeColor('color_home', 'Haus')}
-                    ${this.makeColor('color_miner', 'Miner')}
-                    ${this.makeColor('color_heatpump', 'Wärmepumpe')}
-                    ${this.makeColor('color_ev', 'E-Auto')}
-                    <div class="header">Einstellungen</div>
-                    <div class="row"><div class="label">Batterie-Logik umkehren</div><ha-switch id="sw-invert"></ha-switch></div>
-                </div>`;
-            this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => p.addEventListener('value-changed', (e) => this.upd(p.getAttribute('configValue'), e.detail.value)));
-            this.shadowRoot.querySelectorAll('input[type="color"]').forEach(i => i.addEventListener('change', (e) => this.upd(i.getAttribute('configValue'), e.target.value)));
-            this.shadowRoot.querySelector('#sw-invert').addEventListener('change', (e) => this.upd('invert_battery', e.target.checked));
-            this._initialized = true;
+        if (this._initialized) {
+            this.updateValues();
+            return;
         }
+
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host { display: block; padding: 20px; }
+                .header { font-weight: bold; text-transform: uppercase; color: var(--primary-color); margin: 24px 0 12px 0; border-bottom: 1px solid var(--divider-color); }
+                .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
+                .label { display: flex; align-items: center; width: 130px; font-weight: 500; }
+                ha-entity-picker { flex: 1; }
+                input[type="color"] { border: none; background: none; width: 40px; height: 30px; cursor: pointer;}
+            </style>
+            <div class="config">
+                <div class="header">Energiequellen</div>
+                ${this.makeRow('solar', 'Solar', 'mdi:solar-power')}
+                ${this.makeRow('battery', 'Batterie', 'mdi:battery-high')}
+                ${this.makeRow('grid', 'Netz', 'mdi:transmission-tower')}
+                ${this.makeRow('home', 'Haus', 'mdi:home-lightning')}
+                <div class="header">Zusätzliche Verbraucher</div>
+                ${this.makeRow('miner', 'Miner', 'mdi:pickaxe')}
+                ${this.makeRow('heatpump', 'Wärmepumpe', 'mdi:heat-pump')}
+                ${this.makeRow('ev', 'E-Auto', 'mdi:car-electric')}
+                <div class="header">Farben</div>
+                ${this.makeColor('color_solar', 'Solar')}
+                ${this.makeColor('color_battery', 'Batterie')}
+                ${this.makeColor('color_grid', 'Netz')}
+                ${this.makeColor('color_home', 'Haus')}
+                ${this.makeColor('color_miner', 'Miner')}
+                ${this.makeColor('color_heatpump', 'Wärmepumpe')}
+                ${this.makeColor('color_ev', 'E-Auto')}
+                <div class="header">Einstellungen</div>
+                <div class="row"><div class="label">Batterie-Logik umkehren</div><ha-switch id="sw-invert"></ha-switch></div>
+            </div>`;
+
+        const root = this.shadowRoot;
+        root.querySelectorAll('ha-entity-picker').forEach(p => {
+            // Initial HASS set
+            if (this._hass) p.hass = this._hass;
+            p.addEventListener('value-changed', (e) => this.upd(p.getAttribute('configValue'), e.detail.value));
+        });
+        root.querySelectorAll('input[type="color"]').forEach(i => i.addEventListener('change', (e) => this.upd(i.getAttribute('configValue'), e.target.value)));
+        root.querySelector('#sw-invert').addEventListener('change', (e) => this.upd('invert_battery', e.target.checked));
+
+        this._initialized = true;
         this.updateValues();
     }
 
     updateValues() {
         if (!this._config) return;
-        this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => { const k = p.getAttribute('configValue'); if (p.value !== this._config[k]) p.value = this._config[k] || ''; if (p.hass !== this._hass) p.hass = this._hass; });
-        this.shadowRoot.querySelectorAll('input[type="color"]').forEach(i => { const k = i.getAttribute('configValue'); if (i.value !== (this._config[k] || '#ffffff')) i.value = this._config[k] || '#ffffff'; });
-        const sw = this.shadowRoot.querySelector('#sw-invert'); if (sw.checked !== (this._config.invert_battery === true)) sw.checked = this._config.invert_battery === true;
+        this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => {
+            const k = p.getAttribute('configValue');
+            if (this._config[k] !== undefined && p.value !== this._config[k]) p.value = this._config[k];
+            if (this._hass && p.hass !== this._hass) p.hass = this._hass;
+        });
+        this.shadowRoot.querySelectorAll('input[type="color"]').forEach(i => {
+            const k = i.getAttribute('configValue');
+            if (i.value !== (this._config[k] || '#ffffff')) i.value = this._config[k] || '#ffffff';
+        });
+        const sw = this.shadowRoot.querySelector('#sw-invert');
+        if (sw && sw.checked !== (this._config.invert_battery === true)) sw.checked = this._config.invert_battery === true;
     }
 
     makeRow(key, name, icon) { return `<div class="row"><div class="label"><ha-icon icon="${icon}" style="margin-right:8px"></ha-icon> ${name}</div><ha-entity-picker configValue="${key}" domain-filter="sensor"></ha-entity-picker></div>`; }
     makeColor(key, name) { return `<div class="row"><div class="label">${name}</div><input type="color" configValue="${key}"></div>`; }
-    upd(key, val) { if (this._config[key] === val) return; this.configChanged({ ...this._config, [key]: val }); }
+    upd(key, val) {
+        if (this._config[key] === val) return;
+        this.configChanged({ ...this._config, [key]: val });
+    }
 }
 
 if (!customElements.get('flow-openkairo-editor')) customElements.define('flow-openkairo-editor', FlowOpenKairoEditor);
