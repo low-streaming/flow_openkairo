@@ -76,30 +76,42 @@ export class FlowOpenKairoCardEditor extends LitElement {
     }
 
     render() {
-        if (!this.hass || !this._config) return nothing;
+        if (!this.hass || !this._config) {
+            // Render anyway but maybe with a warning or disabled state if strictly necessary
+            // But usually better to render the structure so HA can attach event listeners
+        }
+
+        const entities = ['solar', 'battery', 'grid', 'home'];
 
         return html`
             <div class="card-config">
                 <h3>Entities</h3>
-                ${this._renderEntityPicker('Solar Power', 'solar')}
-                ${this._renderEntityPicker('Battery Power', 'battery')}
-                ${this._renderEntityPicker('Grid Power', 'grid')}
-                ${this._renderEntityPicker('Home Consumption', 'home')}
+                ${this._renderEntityPicker('Solar Power', 'solar', ['sensor', 'input_number'])}
+                ${this._renderEntityPicker('Battery Power', 'battery', ['sensor', 'input_number'])}
+                ${this._renderEntityPicker('Grid Power', 'grid', ['sensor', 'input_number'])}
+                ${this._renderEntityPicker('Home Consumption', 'home', ['sensor', 'input_number'])}
                 
                 <h3>Options</h3>
                 ${this._renderSwitch('Invert Battery (Active = Charge)', 'invert_battery')}
                 ${this._renderSwitch('Invert Grid (Active = Import)', 'invert_grid')}
+                
+                <p class="info">
+                    Hinweis: Sie können zwischen einfachen Entitäten (Text) und erweiterten Objekten (Farbe, Icon) wählen. 
+                    Der Editor unterstützt primär die Auswahl der Entität.
+                </p>
             </div>
         `;
     }
 
-    private _renderEntityPicker(label: string, key: string) {
+    private _renderEntityPicker(label: string, key: string, domains?: string[]) {
+        const value = this._getEntity(key);
         return html`
             <div class="option">
                 <ha-entity-picker
                     .label=${label}
                     .hass=${this.hass}
-                    .value=${this._getEntity(key)}
+                    .value=${value}
+                    .includeDomains=${domains}
                     @value-changed=${(ev: any) => this._valueChanged(ev, key)}
                     allow-custom-entity
                 ></ha-entity-picker>
@@ -108,10 +120,14 @@ export class FlowOpenKairoCardEditor extends LitElement {
     }
 
     private _renderSwitch(label: string, key: string) {
+        // Safe access to config
+        const checked = this._config ? this._config[key] === true : false;
+
         return html`
             <div class="row">
                 <ha-switch
-                    .checked=${this._config[key] === true}
+                    .checked=${checked}
+                    .disabled=${!this._config}
                     @change=${(ev: any) => this._toggleChanged(ev, key)}
                 ></ha-switch>
                 <span>${label}</span>
@@ -123,5 +139,6 @@ export class FlowOpenKairoCardEditor extends LitElement {
         .card-config { display: flex; flex-direction: column; gap: 16px; padding: 16px 0; }
         .option { display: flex; flex-direction: column; gap: 8px; }
         .row { display: flex; align-items: center; gap: 12px; }
+        .info { font-style: italic; opacity: 0.7; font-size: 0.9em; margin-top: 16px; }
     `;
 }
