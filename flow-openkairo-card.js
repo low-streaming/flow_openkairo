@@ -756,7 +756,7 @@ let N = class extends A {
   }
   static getStubConfig() {
     return {
-      type: "custom:flow-openkairo",
+      type: "custom:flow-openkairo-card",
       solar: { entity: "", name: "Solar" },
       battery: { entity: "", name: "Battery" },
       grid: { entity: "", name: "Grid" },
@@ -972,11 +972,11 @@ J([
   $t()
 ], N.prototype, "config", 2);
 N = J([
-  gt("flow-openkairo")
+  gt("flow-openkairo-card")
 ], N);
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "flow-openkairo",
+  type: "flow-openkairo-card",
   name: "Flow OpenKairo Card",
   preview: !0,
   description: "Custom SolarFlow visualization"
