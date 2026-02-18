@@ -5,7 +5,7 @@
 Eine leichte, im Neon-Stil gehaltene Visualisierungskarte für SolarFlow-Systeme in Home Assistant.
 
 **Hauptfunktionen:**
-- ⚡ **Keine Abhängigkeiten**: Reines JavaScript, kein Build erforderlich.
+- ⚡ **Performance**: Optimiert mit Vite und Lit.
 - 🔋 **Intelligente Animationen**: Die Flussgeschwindigkeit passt sich der Leistung an.
 - 🌈 **Neon-Ästhetik**: Leuchtendes/Neon-Design.
 - 🎨 **Visueller Editor**: Einfache Konfiguration direkt im UI.
@@ -18,8 +18,8 @@ Eine leichte, im Neon-Stil gehaltene Visualisierungskarte für SolarFlow-Systeme
    *(Wenn Sie lokal entwickeln, müssen Sie die Karte nach Updates in HACS möglicherweise erneut herunterladen).*
 
 ### Manuell
-1. Kopieren Sie `flow-openkairo.js` in Ihr Verzeichnis `config/www/`.
-2. Fügen Sie `/local/flow-openkairo.js` zu Ihren Lovelace-Ressourcen hinzu.
+1. Kopieren Sie `flow-openkairo-card.js` in Ihr Verzeichnis `config/www/`.
+2. Fügen Sie `/local/flow-openkairo-card.js` zu Ihren Lovelace-Ressourcen hinzu.
 
 ## Konfiguration
 
@@ -28,7 +28,7 @@ Fügen Sie eine Karte zu Ihrem Dashboard hinzu:
 ### YAML-Konfiguration
 
 ```yaml
-type: custom:flow-openkairo
+type: custom:flow-openkairo-card
 solar: sensor.solar_input_power
 battery: sensor.battery_power   # Positiv = Laden, Negativ = Entladen
 grid: sensor.grid_power         # Positiv = Import, Negativ = Export
