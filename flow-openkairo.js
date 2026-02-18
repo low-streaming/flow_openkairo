@@ -244,6 +244,11 @@ class FlowOpenKairo extends HTMLElement {
 
 // --- VISUAL EDITOR ---
 class FlowOpenKairoEditor extends HTMLElement {
+    constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+    }
+
     setConfig(config) {
         this._config = config;
         this.render();
@@ -260,108 +265,183 @@ class FlowOpenKairoEditor extends HTMLElement {
 
     set hass(hass) {
         this._hass = hass;
-        // Re-render only if necessary to update entity pickers, potentially optimizable
+        // Update all entity pickers with the HASS object so they can list entities
+        if (this.shadowRoot) {
+            this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(picker => {
+                picker.hass = hass;
+            });
+        }
     }
 
     render() {
-        if (!this.shadowRoot) {
-            this.attachShadow({ mode: 'open' });
-        }
+        if (!this._hass || !this._config) return;
 
-        const c = this._config || {};
+        // Render structure only once to avoid losing focus/state, unless minimal
+        // For simplicity in this vanilla implementation, we re-render efficiently or checking existence.
+        // But to fix the "cannot select" issue quickly, we will re-render and re-bind.
+
+        const c = this._config;
 
         this.shadowRoot.innerHTML = `
             <style>
-                .row { display: flex; align-items: center; margin-bottom: 12px; }
-                .label { width: 100px; font-weight: bold; }
-                input[type="text"] { flex: 1; padding: 6px; border-radius: 4px; border: 1px solid #ccc; }
-                input[type="color"] { width: 50px; height: 30px; border: none; padding: 0; }
-                .section { margin-bottom: 24px; border-bottom: 1px solid #444; padding-bottom: 8px; font-size: 14px; text-transform: uppercase; color: var(--primary-color); }
+                :host { display: block; padding: 20px; --primary-text-color: #e1e1e1; }
+                .section-header {
+                    font-size: 14px;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    color: var(--primary-color, #03a9f4);
+                    margin-bottom: 16px;
+                    margin-top: 24px;
+                    letter-spacing: 0.5px;
+                    border-bottom: 2px solid var(--divider-color, #444);
+                    padding-bottom: 4px;
+                }
+                .section-header:first-child { margin-top: 0; }
+                
+                .row {
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 16px;
+                    background: var(--secondary-background-color, rgba(255,255,255,0.05));
+                    padding: 8px 12px;
+                    border-radius: 8px;
+                }
+                .row .label {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    font-size: 16px;
+                    font-weight: 400;
+                }
+                .row .label ha-icon {
+                    margin-right: 12px;
+                    color: var(--secondary-text-color);
+                }
+                
+                ha-entity-picker {
+                    width: 70%;
+                }
+                
+                input[type="color"] {
+                    background: none;
+                    border: none;
+                    width: 40px;
+                    height: 40px;
+                    cursor: pointer;
+                    padding: 0;
+                }
+                
+                /* Animated focus effect */
+                .row:focus-within {
+                    background: var(--secondary-background-color, rgba(255,255,255,0.1));
+                    box-shadow: 0 0 0 1px var(--primary-color, #03a9f4);
+                }
             </style>
 
             <div class="card-config">
                 
-                <div class="section">Entities</div>
+                <div class="section-header">Power Sources</div>
                 
                 <div class="row">
-                    <div class="label">Solar</div>
+                    <div class="label"><ha-icon icon="mdi:solar-power"></ha-icon> Solar</div>
                     <ha-entity-picker 
-                        .hass="${this._hass}" 
-                        .value="${c.solar}"
+                        label="Solar Entity"
+                        id="picker-solar"
+                        .value="${c.solar || ''}"
                         .configValue="${'solar'}"
-                        domain-filter="sensor"
-                        @value-changed="${this._valueChanged}">
+                        domain-filter="sensor">
                     </ha-entity-picker>
                 </div>
 
                 <div class="row">
-                    <div class="label">Battery</div>
-                     <ha-entity-picker 
-                        .hass="${this._hass}" 
-                        .value="${c.battery}"
+                    <div class="label"><ha-icon icon="mdi:battery-high"></ha-icon> Battery</div>
+                    <ha-entity-picker 
+                        label="Battery Entity"
+                        id="picker-battery"
+                        .value="${c.battery || ''}"
                         .configValue="${'battery'}"
-                        domain-filter="sensor"
-                        @value-changed="${this._valueChanged}">
+                        domain-filter="sensor">
                     </ha-entity-picker>
                 </div>
 
                 <div class="row">
-                    <div class="label">Grid</div>
-                     <ha-entity-picker 
-                        .hass="${this._hass}" 
-                        .value="${c.grid}"
+                    <div class="label"><ha-icon icon="mdi:transmission-tower"></ha-icon> Grid</div>
+                    <ha-entity-picker 
+                        label="Grid Entity"
+                        id="picker-grid"
+                        .value="${c.grid || ''}"
                         .configValue="${'grid'}"
-                        domain-filter="sensor"
-                        @value-changed="${this._valueChanged}">
+                        domain-filter="sensor">
                     </ha-entity-picker>
                 </div>
 
                 <div class="row">
-                    <div class="label">Home</div>
-                     <ha-entity-picker 
-                        .hass="${this._hass}" 
-                        .value="${c.home}"
+                    <div class="label"><ha-icon icon="mdi:home-lightning"></ha-icon> Home</div>
+                    <ha-entity-picker 
+                        label="Home Entity"
+                        id="picker-home"
+                        .value="${c.home || ''}"
                         .configValue="${'home'}"
-                        domain-filter="sensor"
-                        @value-changed="${this._valueChanged}">
+                        domain-filter="sensor">
                     </ha-entity-picker>
                 </div>
 
-                <div class="section" style="margin-top: 20px;">Colors</div>
+                <div class="section-header">Style & Color</div>
 
                 <div class="row">
-                    <div class="label">Solar Color</div>
-                    <input type="color" value="${c.color_solar || '#ffcc00'}" configValue="color_solar" @change="${this._valueChanged}">
+                    <div class="label">Solar Theme</div>
+                    <input type="color" id="color-solar" value="${c.color_solar || '#ffcc00'}" configValue="color_solar">
                 </div>
                  <div class="row">
-                    <div class="label">Battery Color</div>
-                    <input type="color" value="${c.color_battery || '#00ff66'}" configValue="color_battery" @change="${this._valueChanged}">
+                    <div class="label">Battery Theme</div>
+                    <input type="color" id="color-battery" value="${c.color_battery || '#00ff66'}" configValue="color_battery">
                 </div>
                  <div class="row">
-                    <div class="label">Grid Color</div>
-                    <input type="color" value="${c.color_grid || '#00ccff'}" configValue="color_grid" @change="${this._valueChanged}">
+                    <div class="label">Grid Theme</div>
+                    <input type="color" id="color-grid" value="${c.color_grid || '#00ccff'}" configValue="color_grid">
                 </div>
                  <div class="row">
-                    <div class="label">Home Color</div>
-                    <input type="color" value="${c.color_home || '#ff00ff'}" configValue="color_home" @change="${this._valueChanged}">
+                    <div class="label">Home Theme</div>
+                    <input type="color" id="color-home" value="${c.color_home || '#ff00ff'}" configValue="color_home">
+                </div>
+
+                <div class="row">
+                    <div class="label" style="font-size: 0.9em; opacity: 0.7;">
+                        Invert Battery Logic (Standard: +Charge / -Discharge)
+                    </div>
+                    <ha-switch 
+                        id="invert-battery"
+                        .checked="${c.invert_battery === true}" 
+                        configValue="invert_battery">
+                    </ha-switch>
                 </div>
 
             </div>
         `;
 
-        // Bind events manually because @ expressions in innerHTML obviously strictly don't work in raw JS without Lit
-        this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(el => {
-            el.hass = this._hass; // Ensure hass is passed down
-            el.addEventListener('value-changed', (e) => this._valueChanged(e));
+        // IMPORTANT: Pass objects and bind events manually for Vanilla JS
+        this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(picker => {
+            picker.hass = this._hass;
+            picker.value = this._config[picker.getAttribute('.configValue')]; // Set initial value correctly
+            picker.addEventListener('value-changed', (e) => this._valueChanged(e));
         });
-        this.shadowRoot.querySelectorAll('input').forEach(el => {
-            el.addEventListener('change', (e) => this._valueChanged(e));
+
+        this.shadowRoot.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', (e) => this._valueChanged(e)); // 'input' for smoother color slide
+        });
+
+        this.shadowRoot.querySelectorAll('ha-switch').forEach(sw => {
+            sw.addEventListener('change', (e) => {
+                this._valueChanged({ target: { configValue: 'invert_battery', value: e.target.checked } });
+            });
         });
     }
 
     _valueChanged(ev) {
         if (!this._config || !this._hass) return;
+
         const target = ev.target;
+        // Handle standard events or manual synthetic events
         const configValue = target.configValue || target.getAttribute('configValue');
         const value = ev.detail && ev.detail.value !== undefined ? ev.detail.value : target.value;
 
