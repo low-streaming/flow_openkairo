@@ -258,9 +258,7 @@ class FlowOpenKairoEditor extends HTMLElement {
         this._hass = hass;
         if (this.shadowRoot) this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => { if (p.hass !== hass) p.hass = hass; });
     }
-    configChanged(newConfig) {
-        this.dispatchEvent(new Event("config-changed", { bubbles: true, composed: true, detail: { config: newConfig } }));
-    }
+    configChanged(newConfig) { this.dispatchEvent(new Event("config-changed", { bubbles: true, composed: true, detail: { config: newConfig } })); }
 
     render() {
         if (!this._hass || !this._config) return;
@@ -271,11 +269,11 @@ class FlowOpenKairoEditor extends HTMLElement {
 
         this.shadowRoot.innerHTML = `
             <style>
-                :host { display: block; padding: 20px; }
+                :host { display: block; padding: 20px; overflow: visible; }
                 .header { font-weight: bold; text-transform: uppercase; color: var(--primary-color); margin: 24px 0 12px 0; border-bottom: 1px solid var(--divider-color); }
                 .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
                 .label { display: flex; align-items: center; width: 130px; font-weight: 500; }
-                ha-entity-picker { flex: 1; }
+                ha-entity-picker { flex: 1; min-width: 0; }
                 input[type="color"] { border: none; background: none; width: 40px; height: 30px; cursor: pointer;}
             </style>
             <div class="config">
@@ -302,7 +300,6 @@ class FlowOpenKairoEditor extends HTMLElement {
 
         const root = this.shadowRoot;
         root.querySelectorAll('ha-entity-picker').forEach(p => {
-            // Initial HASS set
             if (this._hass) p.hass = this._hass;
             p.addEventListener('value-changed', (e) => this.upd(p.getAttribute('configValue'), e.detail.value));
         });
@@ -328,7 +325,7 @@ class FlowOpenKairoEditor extends HTMLElement {
         if (sw && sw.checked !== (this._config.invert_battery === true)) sw.checked = this._config.invert_battery === true;
     }
 
-    makeRow(key, name, icon) { return `<div class="row"><div class="label"><ha-icon icon="${icon}" style="margin-right:8px"></ha-icon> ${name}</div><ha-entity-picker configValue="${key}" domain-filter="sensor"></ha-entity-picker></div>`; }
+    makeRow(key, name, icon) { return `<div class="row"><div class="label"><ha-icon icon="${icon}" style="margin-right:8px"></ha-icon> ${name}</div><ha-entity-picker configValue="${key}"></ha-entity-picker></div>`; }
     makeColor(key, name) { return `<div class="row"><div class="label">${name}</div><input type="color" configValue="${key}"></div>`; }
     upd(key, val) {
         if (this._config[key] === val) return;
