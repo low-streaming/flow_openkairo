@@ -253,87 +253,146 @@ class FlowOpenKairoEditor extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this._initialized = false;
     }
-    setConfig(config) { this._config = config; this.render(); }
+
+    setConfig(config) {
+        this._config = config;
+        this.render();
+    }
+
     set hass(hass) {
         this._hass = hass;
-        if (this.shadowRoot) this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => { if (p.hass !== hass) p.hass = hass; });
+        if (this.shadowRoot) {
+            this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(picker => {
+                if (picker.hass !== hass) picker.hass = hass;
+            });
+        }
     }
-    configChanged(newConfig) { this.dispatchEvent(new Event("config-changed", { bubbles: true, composed: true, detail: { config: newConfig } })); }
+
+    configChanged(newConfig) {
+        this.dispatchEvent(new Event("config-changed", {
+            bubbles: true,
+            composed: true,
+            detail: { config: newConfig }
+        }));
+    }
 
     render() {
         if (!this._hass || !this._config) return;
-        if (this._initialized) {
-            this.updateValues();
-            return;
+
+        if (!this._initialized) {
+            this.shadowRoot.innerHTML = `
+                <style>
+                    :host { display: block; padding: 20px; }
+                    .header { 
+                        font-weight: bold; text-transform: uppercase; 
+                        color: var(--primary-color); margin: 24px 0 12px 0; 
+                        border-bottom: 1px solid var(--divider-color); 
+                    }
+                    .header:first-child { margin-top: 0; }
+                    .row { 
+                        display: flex; align-items: center; justify-content: space-between; 
+                        margin-bottom: 12px; gap: 12px;
+                    }
+                    .label { display: flex; align-items: center; width: 130px; font-weight: 500; }
+                    .label ha-icon { margin-right: 8px; color: var(--secondary-text-color); }
+                    ha-entity-picker { flex: 1; }
+                    input[type="color"] { border: none; background: none; width: 40px; height: 30px; cursor: pointer;}
+                </style>
+
+                <div class="config">
+                    <div class="header">Energiequellen</div>
+                    ${this.makeRow('solar', 'Solar', 'mdi:solar-power')}
+                    ${this.makeRow('battery', 'Batterie', 'mdi:battery-high')}
+                    ${this.makeRow('grid', 'Netz', 'mdi:transmission-tower')}
+                    ${this.makeRow('home', 'Haus', 'mdi:home-lightning')}
+
+                    <div class="header">Zusätzliche Verbraucher</div>
+                    ${this.makeRow('miner', 'Miner', 'mdi:pickaxe')}
+                    ${this.makeRow('heatpump', 'Wärmepumpe', 'mdi:heat-pump')}
+                    ${this.makeRow('ev', 'E-Auto', 'mdi:car-electric')}
+
+                    <div class="header">Farben</div>
+                    ${this.makeColor('color_solar', 'Solar')}
+                    ${this.makeColor('color_battery', 'Batterie')}
+                    ${this.makeColor('color_grid', 'Netz')}
+                    ${this.makeColor('color_home', 'Haus')}
+                    ${this.makeColor('color_miner', 'Miner')}
+                    ${this.makeColor('color_heatpump', 'Wärmepumpe')}
+                    ${this.makeColor('color_ev', 'E-Auto')}
+
+                    <div class="header">Einstellungen</div>
+                    <div class="row">
+                        <div class="label">Batterie-Logik umkehren</div>
+                        <ha-switch id="sw-invert"></ha-switch>
+                    </div>
+                </div>
+            `;
+
+            this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => {
+                p.addEventListener('value-changed', (e) => this.upd(p.getAttribute('configValue'), e.detail.value));
+            });
+            this.shadowRoot.querySelectorAll('input[type="color"]').forEach(i => {
+                i.addEventListener('change', (e) => this.upd(i.getAttribute('configValue'), e.target.value));
+            });
+            const sw = this.shadowRoot.querySelector('#sw-invert');
+            sw.addEventListener('change', (e) => this.upd('invert_battery', e.target.checked));
+
+            this._initialized = true;
         }
 
-        this.shadowRoot.innerHTML = `
-            <style>
-                :host { display: block; padding: 20px; overflow: visible; }
-                .header { font-weight: bold; text-transform: uppercase; color: var(--primary-color); margin: 24px 0 12px 0; border-bottom: 1px solid var(--divider-color); }
-                .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
-                .label { display: flex; align-items: center; width: 130px; font-weight: 500; }
-                ha-entity-picker { flex: 1; min-width: 0; }
-                input[type="color"] { border: none; background: none; width: 40px; height: 30px; cursor: pointer;}
-            </style>
-            <div class="config">
-                <div class="header">Energiequellen</div>
-                ${this.makeRow('solar', 'Solar', 'mdi:solar-power')}
-                ${this.makeRow('battery', 'Batterie', 'mdi:battery-high')}
-                ${this.makeRow('grid', 'Netz', 'mdi:transmission-tower')}
-                ${this.makeRow('home', 'Haus', 'mdi:home-lightning')}
-                <div class="header">Zusätzliche Verbraucher</div>
-                ${this.makeRow('miner', 'Miner', 'mdi:pickaxe')}
-                ${this.makeRow('heatpump', 'Wärmepumpe', 'mdi:heat-pump')}
-                ${this.makeRow('ev', 'E-Auto', 'mdi:car-electric')}
-                <div class="header">Farben</div>
-                ${this.makeColor('color_solar', 'Solar')}
-                ${this.makeColor('color_battery', 'Batterie')}
-                ${this.makeColor('color_grid', 'Netz')}
-                ${this.makeColor('color_home', 'Haus')}
-                ${this.makeColor('color_miner', 'Miner')}
-                ${this.makeColor('color_heatpump', 'Wärmepumpe')}
-                ${this.makeColor('color_ev', 'E-Auto')}
-                <div class="header">Einstellungen</div>
-                <div class="row"><div class="label">Batterie-Logik umkehren</div><ha-switch id="sw-invert"></ha-switch></div>
-            </div>`;
-
-        const root = this.shadowRoot;
-        root.querySelectorAll('ha-entity-picker').forEach(p => {
-            if (this._hass) p.hass = this._hass;
-            p.addEventListener('value-changed', (e) => this.upd(p.getAttribute('configValue'), e.detail.value));
-        });
-        root.querySelectorAll('input[type="color"]').forEach(i => i.addEventListener('change', (e) => this.upd(i.getAttribute('configValue'), e.target.value)));
-        root.querySelector('#sw-invert').addEventListener('change', (e) => this.upd('invert_battery', e.target.checked));
-
-        this._initialized = true;
         this.updateValues();
     }
 
     updateValues() {
-        if (!this._config) return;
+        const c = this._config;
+
         this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => {
-            const k = p.getAttribute('configValue');
-            if (this._config[k] !== undefined && p.value !== this._config[k]) p.value = this._config[k];
-            if (this._hass && p.hass !== this._hass) p.hass = this._hass;
+            const key = p.getAttribute('configValue');
+            if (p.value !== c[key]) p.value = c[key] || '';
+            if (p.hass !== this._hass) p.hass = this._hass;
         });
+
         this.shadowRoot.querySelectorAll('input[type="color"]').forEach(i => {
-            const k = i.getAttribute('configValue');
-            if (i.value !== (this._config[k] || '#ffffff')) i.value = this._config[k] || '#ffffff';
+            const key = i.getAttribute('configValue');
+            if (i.value !== (c[key] || '#ffffff')) i.value = c[key] || '#ffffff';
         });
+
         const sw = this.shadowRoot.querySelector('#sw-invert');
-        if (sw && sw.checked !== (this._config.invert_battery === true)) sw.checked = this._config.invert_battery === true;
+        if (sw.checked !== (c.invert_battery === true)) {
+            sw.checked = c.invert_battery === true;
+        }
     }
 
-    makeRow(key, name, icon) { return `<div class="row"><div class="label"><ha-icon icon="${icon}" style="margin-right:8px"></ha-icon> ${name}</div><ha-entity-picker configValue="${key}"></ha-entity-picker></div>`; }
-    makeColor(key, name) { return `<div class="row"><div class="label">${name}</div><input type="color" configValue="${key}"></div>`; }
+    makeRow(key, name, icon) {
+        return `
+        <div class="row">
+            <div class="label"><ha-icon icon="${icon}"></ha-icon> ${name}</div>
+            <ha-entity-picker configValue="${key}"></ha-entity-picker>
+        </div>`;
+    }
+
+    makeColor(key, name) {
+        return `
+        <div class="row">
+            <div class="label">${name}</div>
+            <input type="color" configValue="${key}">
+        </div>`;
+    }
+
     upd(key, val) {
         if (this._config[key] === val) return;
         this.configChanged({ ...this._config, [key]: val });
     }
 }
 
-if (!customElements.get('flow-openkairo-editor')) customElements.define('flow-openkairo-editor', FlowOpenKairoEditor);
-if (!customElements.get('flow-openkairo')) customElements.define('flow-openkairo', FlowOpenKairo);
+customElements.define('flow-openkairo-editor', FlowOpenKairoEditor);
+customElements.define('flow-openkairo', FlowOpenKairo);
 window.customCards = window.customCards || [];
-if (!window.customCards.some(c => c.type === 'flow-openkairo')) window.customCards.push({ type: 'flow-openkairo', name: 'Flow OpenKairo', description: 'Neon Solar Flow' });
+if (!window.customCards.some(c => c.type === 'flow-openkairo')) {
+    window.customCards.push({
+        type: 'flow-openkairo',
+        name: 'Flow OpenKairo',
+        preview: true,
+        description: 'Neon Solar Flow'
+    });
+}
