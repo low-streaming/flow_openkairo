@@ -101,18 +101,21 @@ class FlowOpenKairo extends HTMLElement {
 
     renderDOM(vals) {
         const c = this.config;
-        const width = 340;
+        // Revert to 320px width (Standard Mobile Safe)
+        const width = 320;
         const height = 440;
-        const cx = 170;
-        const cy = 160;
+        const cx = 160; // Center X (320/2)
+        const cy = 150; // Main Center Y
 
         const posSolar = { x: cx, y: 50 };
         const posBat = { x: 50, y: cy };
         const posGrid = { x: width - 50, y: cy };
-        const posHome = { x: cx, y: 270 };
-        const posMiner = { x: 60, y: 380 };
+        const posHome = { x: cx, y: 260 };
+
+        // Bottom Row
+        const posMiner = { x: 50, y: 380 };
         const posHP = { x: cx, y: 380 };
-        const posEV = { x: width - 60, y: 380 };
+        const posEV = { x: width - 50, y: 380 };
 
         const cSolar = c.color_solar || '#ffcc00';
         const cBat = c.color_battery || '#00ff66';
@@ -367,7 +370,7 @@ class FlowOpenKairoEditor extends HTMLElement {
         return `
         <div class="row">
             <div class="label"><ha-icon icon="${icon}"></ha-icon> ${name}</div>
-            <ha-entity-picker configValue="${key}"></ha-entity-picker>
+            <ha-entity-picker configValue="${key}" domain-filter="sensor"></ha-entity-picker>
         </div>`;
     }
 
