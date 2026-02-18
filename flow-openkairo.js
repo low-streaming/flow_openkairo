@@ -1,4 +1,5 @@
-console.log("FLOW OPENKAIRO: VERSION VERTICAL FIX");
+console.log("FLOW OPENKAIRO: VERSION HA-SELECTOR + FLOW UPGRADE (DOCS)");
+
 class FlowOpenKairo extends HTMLElement {
     constructor() {
         super();
@@ -52,7 +53,8 @@ class FlowOpenKairo extends HTMLElement {
 
     getDur(w) {
         if (w < 1) return 0;
-        return Math.max(0.5, 4 - (Math.log(w + 1) / 1.5));
+        // Adjusted speed calculation for smoother flow
+        return Math.max(0.8, 5 - (Math.log(w + 1) / 1.2));
     }
 
     update() {
@@ -128,7 +130,7 @@ class FlowOpenKairo extends HTMLElement {
             <style>
                 :host { display: block; }
                 .card {
-                    background: linear-gradient(135deg, #101014 0%, #1a1a24 100%);
+                    background: linear-gradient(135deg, #18181e 0%, #22222a 100%);
                     border-radius: 20px;
                     padding: 16px;
                     box-shadow: 0 10px 20px rgba(0,0,0,0.5);
@@ -167,7 +169,11 @@ class FlowOpenKairo extends HTMLElement {
                 <div class="bg-grid"></div>
                 <svg class="canvas" viewBox="0 0 ${width} ${height}">
                     <defs>
-                        <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                        <filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                        <linearGradient id="grad-line" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:white;stop-opacity:0.1" />
+                            <stop offset="100%" style="stop-color:white;stop-opacity:0.6" />
+                        </linearGradient>
                     </defs>
                     ${vals.isSolar ? this.drawFlow(posSolar, { x: cx, y: cy }, vals.solar, cSolar, 'solar') : ''}
                     ${vals.isBatCharge ? this.drawFlow({ x: cx, y: cy }, posBat, vals.solar, cSolar, 'bat-charge') : ''}
@@ -238,12 +244,24 @@ class FlowOpenKairo extends HTMLElement {
             if (start.x === end.x) path = `M ${start.x},${start.y} L ${end.x},${end.y}`;
             else path = `M ${start.x},${start.y} Q ${start.x},${end.y} ${end.x},${end.y}`;
         }
+        // Improved animation with "Comet" tail effect using 2 circles
         return `
-            <path d="${path}" stroke="${color}" stroke-opacity="0.15" stroke-width="3" fill="none" />
+            <path d="${path}" stroke="${color}" stroke-opacity="0.2" stroke-width="2" fill="none" />
+            
+            <!-- Main moving dot -->
             <circle r="4" fill="${color}" filter="url(#glow)">
                 <animateMotion id="anim-${id}" dur="${dur}s" repeatCount="indefinite" path="${path}" calcMode="linear" />
             </circle>
-            ${watts > 800 ? `<circle r="2" fill="${color}" opacity="0.6"><animateMotion dur="${dur}s" begin="${dur / 3}s" repeatCount="indefinite" path="${path}" calcMode="linear" /></circle>` : ''}
+            
+            <!-- Trailing tail dot 1 -->
+            <circle r="2.5" fill="${color}" opacity="0.6" filter="url(#glow)">
+                <animateMotion dur="${dur}s" begin="-${dur * 0.05}s" repeatCount="indefinite" path="${path}" calcMode="linear" />
+            </circle>
+
+            <!-- Trailing tail dot 2 -->
+            <circle r="1.5" fill="${color}" opacity="0.3">
+                <animateMotion dur="${dur}s" begin="-${dur * 0.1}s" repeatCount="indefinite" path="${path}" calcMode="linear" />
+            </circle>
         `;
     }
     getCardSize() { return 10; }
@@ -263,10 +281,12 @@ class FlowOpenKairoEditor extends HTMLElement {
 
     set hass(hass) {
         this._hass = hass;
-        if (this.shadowRoot) {
-            this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(picker => {
-                if (picker.hass !== hass) picker.hass = hass;
-            });
+        // Re-render only if initialized to ensure hass is passed to selectors
+        if (this._initialized) {
+            const selectors = this.shadowRoot.querySelectorAll('ha-selector');
+            selectors.forEach(s => { s.hass = hass; });
+        } else {
+            this.render();
         }
     }
 
@@ -280,33 +300,34 @@ class FlowOpenKairoEditor extends HTMLElement {
 
     render() {
         if (!this._hass || !this._config) return;
+        if (this._initialized) return;
 
-        if (!this._initialized) {
-            this.shadowRoot.innerHTML = `
-                <style>
-                    :host { display: block; padding: 20px; overflow: visible; }
-                    .row { margin-bottom: 12px; }
-                    .row.inline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-                    .header { font-weight: bold; text-transform: uppercase; color: var(--primary-color); margin: 24px 0 12px 0; border-bottom: 1px solid var(--divider-color); }
-                    .header:first-child { margin-top: 0; }
-                    .label { display: flex; align-items: center; margin-bottom: 8px; font-weight: 500; }
-                    .label ha-icon { margin-right: 8px; color: var(--secondary-text-color); }
-                    ha-entity-picker { display: block; width: 100%; box-sizing: border-box; }
-                    input[type="color"] { border: none; background: none; width: 40px; height: 30px; cursor: pointer; }
-                </style>
-
-                <div class="config">
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host { display: block; padding: 20px; }
+                .section { margin-bottom: 24px; }
+                .header { font-weight: bold; text-transform: uppercase; color: var(--primary-color); margin-bottom: 12px; border-bottom: 1px solid var(--divider-color); padding-bottom: 4px; }
+                .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
+                .row input { flex: 0 0 50px; }
+                ha-selector { margin-bottom: 12px; display: block; }
+            </style>
+            <div class="config">
+                <div class="section">
                     <div class="header">Energiequellen</div>
-                    ${this.makeRow('solar', 'Solar', 'mdi:solar-power')}
-                    ${this.makeRow('battery', 'Batterie', 'mdi:battery-high')}
-                    ${this.makeRow('grid', 'Netz', 'mdi:transmission-tower')}
-                    ${this.makeRow('home', 'Haus', 'mdi:home-lightning')}
+                    ${this.makeSelector('solar', 'Solar (Sensor)', 'mdi:solar-power')}
+                    ${this.makeSelector('battery', 'Batterie (Sensor)', 'mdi:battery-high')}
+                    ${this.makeSelector('grid', 'Netz (Sensor)', 'mdi:transmission-tower')}
+                    ${this.makeSelector('home', 'Haus (Sensor)', 'mdi:home-lightning')}
+                </div>
 
+                <div class="section">
                     <div class="header">Zusätzliche Verbraucher</div>
-                    ${this.makeRow('miner', 'Miner', 'mdi:pickaxe')}
-                    ${this.makeRow('heatpump', 'Wärmepumpe', 'mdi:heat-pump')}
-                    ${this.makeRow('ev', 'E-Auto', 'mdi:car-electric')}
+                    ${this.makeSelector('miner', 'Miner (Sensor)', 'mdi:pickaxe')}
+                    ${this.makeSelector('heatpump', 'Wärmepumpe (Sensor)', 'mdi:heat-pump')}
+                    ${this.makeSelector('ev', 'E-Auto (Sensor)', 'mdi:car-electric')}
+                </div>
 
+                <div class="section">
                     <div class="header">Farben</div>
                     ${this.makeColor('color_solar', 'Solar')}
                     ${this.makeColor('color_battery', 'Batterie')}
@@ -315,63 +336,53 @@ class FlowOpenKairoEditor extends HTMLElement {
                     ${this.makeColor('color_miner', 'Miner')}
                     ${this.makeColor('color_heatpump', 'Wärmepumpe')}
                     ${this.makeColor('color_ev', 'E-Auto')}
+                </div>
 
+                <div class="section">
                     <div class="header">Einstellungen</div>
-                    <div class="row inline">
-                        <div class="label">Batterie-Logik umkehren</div>
+                    <div class="row">
+                        <div>Batterie-Logik umkehren</div>
                         <ha-switch id="sw-invert"></ha-switch>
                     </div>
                 </div>
-            `;
+            </div>
+        `;
 
-            this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => {
-                p.addEventListener('value-changed', (e) => this.upd(p.getAttribute('configValue'), e.detail.value));
-            });
-            this.shadowRoot.querySelectorAll('input[type="color"]').forEach(i => {
-                i.addEventListener('change', (e) => this.upd(i.getAttribute('configValue'), e.target.value));
-            });
-            const sw = this.shadowRoot.querySelector('#sw-invert');
-            sw.addEventListener('change', (e) => this.upd('invert_battery', e.target.checked));
-
-            this._initialized = true;
-        }
-
-        this.updateValues();
-    }
-
-    updateValues() {
-        const c = this._config;
-
-        this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(p => {
-            const key = p.getAttribute('configValue');
-            if (p.value !== c[key]) p.value = c[key] || '';
-            if (p.hass !== this._hass) p.hass = this._hass;
+        // Initialize Selectors
+        this.shadowRoot.querySelectorAll('ha-selector').forEach(s => {
+            const key = s.getAttribute('configValue');
+            s.hass = this._hass;
+            s.selector = { entity: { domain: ["sensor", "input_number"] } }; // Allow sensors and inputs
+            s.value = this._config[key];
+            s.label = s.getAttribute('label');
+            s.addEventListener('value-changed', (e) => this.upd(key, e.detail.value));
         });
 
+        // Initialize Colors
         this.shadowRoot.querySelectorAll('input[type="color"]').forEach(i => {
-            const key = i.getAttribute('configValue');
-            if (i.value !== (c[key] || '#ffffff')) i.value = c[key] || '#ffffff';
+            i.addEventListener('change', (e) => this.upd(i.getAttribute('configValue'), e.target.value));
         });
 
+        // Initialize Switch
         const sw = this.shadowRoot.querySelector('#sw-invert');
-        if (sw.checked !== (c.invert_battery === true)) {
-            sw.checked = c.invert_battery === true;
-        }
+        sw.checked = this._config.invert_battery === true;
+        sw.addEventListener('change', (e) => this.upd('invert_battery', e.target.checked));
+
+        this._initialized = true;
     }
 
-    makeRow(key, name, icon) {
-        return `
-        <div class="row">
-            <div class="label"><ha-icon icon="${icon}"></ha-icon> ${name}</div>
-            <ha-entity-picker configValue="${key}"></ha-entity-picker>
-        </div>`;
+    makeSelector(key, label, icon) {
+        // ha-selector will render its own label usually, but we pass custom label
+        // We set attribute label to use in JS init
+        return `<ha-selector configValue="${key}" label="${label}"></ha-selector>`;
     }
 
     makeColor(key, name) {
+        const val = this._config[key] || '#ffffff';
         return `
-        <div class="row inline">
-            <div class="label">${name}</div>
-            <input type="color" configValue="${key}">
+        <div class="row">
+            <div>${name}</div>
+            <input type="color" configValue="${key}" value="${val}">
         </div>`;
     }
 
