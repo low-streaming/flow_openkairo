@@ -27,7 +27,7 @@ interface FlowOpenKairoConfig {
   invert_grid?: boolean;
 }
 
-@customElement('flow-openkairo-card')
+@customElement('flow-openkairo')
 export class FlowOpenKairoCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private config!: FlowOpenKairoConfig;
@@ -47,7 +47,7 @@ export class FlowOpenKairoCard extends LitElement {
 
   public static getStubConfig() {
     return {
-      type: 'custom:flow-openkairo-card',
+      type: 'custom:flow-openkairo',
       solar: { entity: '', name: 'Solar' },
       battery: { entity: '', name: 'Battery' },
       grid: { entity: '', name: 'Grid' },
@@ -307,7 +307,7 @@ export class FlowOpenKairoCard extends LitElement {
 // Register
 (window as any).customCards = (window as any).customCards || [];
 (window as any).customCards.push({
-  type: 'flow-openkairo-card',
+  type: 'flow-openkairo',
   name: 'Flow OpenKairo Card',
   preview: true,
   description: 'Custom SolarFlow visualization',
