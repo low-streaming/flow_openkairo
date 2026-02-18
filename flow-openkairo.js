@@ -6,8 +6,7 @@ class FlowOpenKairo extends HTMLElement {
 
     setConfig(config) {
         if (!config.solar && !config.battery && !config.grid) {
-            // throw new Error('Please define at least one entity (solar, battery, grid)');
-            // Relaxed check for editor preview
+            // relaxed check
         }
         this.config = config;
     }
@@ -17,7 +16,7 @@ class FlowOpenKairo extends HTMLElement {
         this.render();
     }
 
-    // Define stub config for new cards
+    // Stub setup
     static getStubConfig() {
         return {
             solar: "sensor.solar_power",
@@ -31,7 +30,6 @@ class FlowOpenKairo extends HTMLElement {
         };
     }
 
-    // Define the editor custom element
     static getConfigElement() {
         return document.createElement("flow-openkairo-editor");
     }
@@ -51,10 +49,10 @@ class FlowOpenKairo extends HTMLElement {
         const home = this.getVal(this.config.home);
 
         // Neon Palette
-        const cSolar = this.config.color_solar || '#ffcc00'; // Bright Yellow-Orange
-        const cBat = this.config.color_battery || '#00ff66'; // Matrix Green
-        const cGrid = this.config.color_grid || '#00ccff';   // Cyan
-        const cHome = this.config.color_home || '#ff00ff';   // Magenta
+        const cSolar = this.config.color_solar || '#ffcc00';
+        const cBat = this.config.color_battery || '#00ff66';
+        const cGrid = this.config.color_grid || '#00ccff';
+        const cHome = this.config.color_home || '#ff00ff';
 
         // Logic
         const isSolar = solar > 2;
@@ -86,7 +84,6 @@ class FlowOpenKairo extends HTMLElement {
                     overflow: hidden;
                 }
                 
-                /* Grid Background Effect */
                 .grid-bg {
                     position: absolute;
                     top: 0; left: 0; width: 100%; height: 100%;
@@ -129,7 +126,6 @@ class FlowOpenKairo extends HTMLElement {
                     position: relative;
                 }
 
-                /* Active Glow Effect */
                 .node[active="true"] .icon-box {
                     border-color: var(--glow-color);
                     box-shadow: 0 0 25px var(--glow-color), inset 0 0 10px var(--glow-color);
@@ -162,13 +158,11 @@ class FlowOpenKairo extends HTMLElement {
                 .val { font-weight: 800; font-size: 16px; letter-spacing: 0.5px; }
                 .lbl { font-size: 11px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
 
-                /* Positions */
                 .pos-solar { top: 25px; left: 50%; transform: translateX(-50%); }
                 .pos-bat   { top: 50%; left: 25px; transform: translateY(-50%); }
                 .pos-grid  { top: 50%; right: 25px; transform: translateY(-50%); }
                 .pos-home  { bottom: 25px; left: 50%; transform: translateX(-50%); }
 
-                /* Flow Path Styling */
                 path {
                     filter: drop-shadow(0 0 3px currentColor);
                 }
@@ -176,28 +170,25 @@ class FlowOpenKairo extends HTMLElement {
 
             <div class="card">
                 <div class="grid-bg"></div>
-                
-                <!-- SVG Canvas for flows -->
                 <svg class="canvas" viewBox="0 0 320 340">
                     <defs>
-                        <!-- Gradients for lines -->
                         <linearGradient id="grad-solar" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100%">
                             <stop offset="0%" stop-color="${cSolar}" stop-opacity="0.8"/>
                             <stop offset="100%" stop-color="${cSolar}" stop-opacity="0.1"/>
                         </linearGradient>
                     </defs>
 
-                    ${isSolar ? this.makeFlow(160, 80, 160, 260, solar, cSolar) : ''}          <!-- Solar->Home -->
-                    ${isBatCharge ? this.makeFlow(160, 80, 60, 170, solar, cSolar) : ''}       <!-- Solar->Bat -->
-                    ${isBatDischarge ? this.makeFlow(60, 170, 160, 260, vBat, cBat) : ''}      <!-- Bat->Home -->
-                    ${isGridImport ? this.makeFlow(260, 170, 160, 260, vGrid, cGrid) : ''}     <!-- Grid->Home -->
-                    ${isGridExport && isSolar ? this.makeFlow(160, 80, 260, 170, vGrid, cSolar) : ''} <!-- Solar->Export -->
+                    ${isSolar ? this.makeFlow(160, 80, 160, 260, solar, cSolar) : ''}
+                    ${isBatCharge ? this.makeFlow(160, 80, 60, 170, solar, cSolar) : ''}
+                    ${isBatDischarge ? this.makeFlow(60, 170, 160, 260, vBat, cBat) : ''}
+                    ${isGridImport ? this.makeFlow(260, 170, 160, 260, vGrid, cGrid) : ''}
+                    ${isGridExport && isSolar ? this.makeFlow(160, 80, 260, 170, vGrid, cSolar) : ''}
                 </svg>
 
                 ${this.makeNode('solar', solar, '☀️', 'Solar', 'pos-solar', cSolar, isSolar)}
-                ${this.makeNode('bat', vBat, '🔋', 'Storage', 'pos-bat', cBat, isBatCharge || isBatDischarge)}
-                ${this.makeNode('grid', vGrid, '⚡', 'Grid', 'pos-grid', cGrid, isGridImport || isGridExport)}
-                ${this.makeNode('home', home, '🏠', 'Home', 'pos-home', cHome, isHome)}
+                ${this.makeNode('bat', vBat, '🔋', 'Speicher', 'pos-bat', cBat, isBatCharge || isBatDischarge)}
+                ${this.makeNode('grid', vGrid, '⚡', 'Netz', 'pos-grid', cGrid, isGridImport || isGridExport)}
+                ${this.makeNode('home', home, '🏠', 'Haus', 'pos-home', cHome, isHome)}
             </div>
         `;
     }
@@ -216,20 +207,13 @@ class FlowOpenKairo extends HTMLElement {
 
     makeFlow(x1, y1, x2, y2, watts, color) {
         if (watts < 1) return '';
-        // Faster animation for higher watts
-        // Cap at 0.5s for very high power, 4s for very low
         const dur = Math.max(0.6, 4 - (Math.log(watts + 1) / 2));
 
         return `
-            <!-- Background faint line -->
             <path d="M${x1},${y1} L${x2},${y2}" stroke="${color}" stroke-opacity="0.1" stroke-width="4" fill="none" />
-            
-            <!-- Moving particle -->
             <circle r="5" fill="${color}" filter="drop-shadow(0 0 4px ${color})">
                 <animateMotion dur="${dur}s" repeatCount="indefinite" path="M${x1},${y1} L${x2},${y2}" calcMode="linear" />
             </circle>
-            
-            <!-- Second particle for high power -->
             ${watts > 800 ? `
             <circle r="3" fill="${color}" opacity="0.7">
                 <animateMotion dur="${dur}s" begin="${dur / 2}s" repeatCount="indefinite" path="M${x1},${y1} L${x2},${y2}" calcMode="linear" />
@@ -242,7 +226,7 @@ class FlowOpenKairo extends HTMLElement {
     }
 }
 
-// --- VISUAL EDITOR ---
+// --- VISUAL EDITOR (DEUTSCH) ---
 class FlowOpenKairoEditor extends HTMLElement {
     constructor() {
         super();
@@ -266,7 +250,6 @@ class FlowOpenKairoEditor extends HTMLElement {
 
     set hass(hass) {
         this._hass = hass;
-        // Update all entity pickers with the HASS object so they can list entities
         if (this.shadowRoot) {
             this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(picker => {
                 picker.hass = hass;
@@ -277,9 +260,7 @@ class FlowOpenKairoEditor extends HTMLElement {
     render() {
         if (!this._hass || !this._config) return;
 
-        // CRITICAL FIX: Only set innerHTML once to avoid destroying the pickers while interacting
         if (this._initialized) {
-            // Just update values if needed, or do nothing if handled by bindings
             return;
         }
 
@@ -332,8 +313,6 @@ class FlowOpenKairoEditor extends HTMLElement {
                 
                 ha-entity-picker {
                     width: 70%;
-                    --paper-input-container-label: { color: var(--secondary-text-color); };
-                    --paper-input-container-input: { color: var(--primary-text-color); };
                 }
                 
                 input[type="color"] {
@@ -354,7 +333,7 @@ class FlowOpenKairoEditor extends HTMLElement {
 
             <div class="card-config">
                 
-                <div class="section-header">Power Sources</div>
+                <div class="section-header">Energiequellen</div>
                 
                 <div class="row">
                     <div class="label"><ha-icon icon="mdi:solar-power"></ha-icon> Solar</div>
@@ -366,7 +345,7 @@ class FlowOpenKairoEditor extends HTMLElement {
                 </div>
 
                 <div class="row">
-                    <div class="label"><ha-icon icon="mdi:battery-high"></ha-icon> Battery</div>
+                    <div class="label"><ha-icon icon="mdi:battery-high"></ha-icon> Batterie</div>
                     <ha-entity-picker 
                         id="picker-battery"
                         configValue="battery"
@@ -375,7 +354,7 @@ class FlowOpenKairoEditor extends HTMLElement {
                 </div>
 
                 <div class="row">
-                    <div class="label"><ha-icon icon="mdi:transmission-tower"></ha-icon> Grid</div>
+                    <div class="label"><ha-icon icon="mdi:transmission-tower"></ha-icon> Netz</div>
                     <ha-entity-picker 
                         id="picker-grid"
                         configValue="grid"
@@ -384,7 +363,7 @@ class FlowOpenKairoEditor extends HTMLElement {
                 </div>
 
                 <div class="row">
-                    <div class="label"><ha-icon icon="mdi:home-lightning"></ha-icon> Home</div>
+                    <div class="label"><ha-icon icon="mdi:home-lightning"></ha-icon> Haus</div>
                     <ha-entity-picker 
                         id="picker-home"
                         configValue="home"
@@ -392,28 +371,28 @@ class FlowOpenKairoEditor extends HTMLElement {
                     </ha-entity-picker>
                 </div>
 
-                <div class="section-header">Style & Color</div>
+                <div class="section-header">Stil & Farbe</div>
 
                 <div class="row">
-                    <div class="label">Solar Theme</div>
+                    <div class="label">Solar Farbe</div>
                     <input type="color" id="color-solar" value="${c.color_solar || '#ffcc00'}" configValue="color_solar">
                 </div>
                  <div class="row">
-                    <div class="label">Battery Theme</div>
+                    <div class="label">Batterie Farbe</div>
                     <input type="color" id="color-battery" value="${c.color_battery || '#00ff66'}" configValue="color_battery">
                 </div>
                  <div class="row">
-                    <div class="label">Grid Theme</div>
+                    <div class="label">Netz Farbe</div>
                     <input type="color" id="color-grid" value="${c.color_grid || '#00ccff'}" configValue="color_grid">
                 </div>
                  <div class="row">
-                    <div class="label">Home Theme</div>
+                    <div class="label">Haus Farbe</div>
                     <input type="color" id="color-home" value="${c.color_home || '#ff00ff'}" configValue="color_home">
                 </div>
 
                 <div class="row">
                     <div class="label" style="font-size: 0.9em; opacity: 0.7;">
-                        Invert Battery (+/-)
+                        Batterie umkehren (+/-)
                     </div>
                     <ha-switch 
                         id="invert-battery"
@@ -424,48 +403,26 @@ class FlowOpenKairoEditor extends HTMLElement {
             </div>
         `;
 
-        // --- BINDING START ---
-
-        // Bind Entity Pickers
+        // Bindings
         this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(picker => {
-            // 1. Set Critical Properties
             picker.hass = this._hass;
-
-            // 2. Set Current Value
             const key = picker.getAttribute('configValue');
-            if (this._config[key]) {
-                picker.value = this._config[key];
-            }
+            if (this._config[key]) picker.value = this._config[key];
 
-            // 3. Bind Event
             picker.addEventListener('value-changed', (e) => {
-                this._valueChanged({
-                    target: {
-                        configValue: key,
-                        value: e.detail.value
-                    }
-                });
+                this._valueChanged({ target: { configValue: key, value: e.detail.value } });
             });
         });
 
-        // Bind Color Inputs
         this.shadowRoot.querySelectorAll('input[type="color"]').forEach(input => {
             input.addEventListener('input', (e) => this._valueChanged(e));
         });
 
-        // Bind Switches
         this.shadowRoot.querySelectorAll('ha-switch').forEach(sw => {
-            // Handle checked state manually since we removed attribute binding
             const key = sw.getAttribute('configValue');
             sw.checked = this._config[key] === true;
-
             sw.addEventListener('change', (e) => {
-                this._valueChanged({
-                    target: {
-                        configValue: key,
-                        value: e.target.checked
-                    }
-                });
+                this._valueChanged({ target: { configValue: key, value: e.target.checked } });
             });
         });
     }
@@ -474,16 +431,12 @@ class FlowOpenKairoEditor extends HTMLElement {
         if (!this._config || !this._hass) return;
 
         const target = ev.target;
-        // Handle standard events or manual synthetic events
         const configValue = target.configValue || target.getAttribute('configValue');
         const value = ev.detail && ev.detail.value !== undefined ? ev.detail.value : target.value;
 
         if (this._config[configValue] === value) return;
 
-        const newConfig = {
-            ...this._config,
-            [configValue]: value,
-        };
+        const newConfig = { ...this._config, [configValue]: value };
         this.configChanged(newConfig);
     }
 }
