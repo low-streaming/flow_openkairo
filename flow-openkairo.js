@@ -284,42 +284,52 @@ class FlowOpenKairoEditor extends HTMLElement {
 
         this.shadowRoot.innerHTML = `
             <style>
-                :host { display: block; padding: 20px; --primary-text-color: #e1e1e1; }
+                :host { 
+                    display: block; 
+                    padding: 20px; 
+                    background: var(--ha-card-background, var(--card-background-color, #fff)); 
+                    border-radius: var(--ha-card-border-radius, 12px);
+                }
+                
                 .section-header {
-                    font-size: 14px;
-                    font-weight: 500;
+                    font-size: 12px;
+                    font-weight: bold;
                     text-transform: uppercase;
-                    color: var(--primary-color, #03a9f4);
+                    color: var(--primary-text-color);
+                    opacity: 0.7;
                     margin-bottom: 16px;
                     margin-top: 24px;
-                    letter-spacing: 0.5px;
-                    border-bottom: 2px solid var(--divider-color, #444);
-                    padding-bottom: 4px;
+                    letter-spacing: 1px;
                 }
                 .section-header:first-child { margin-top: 0; }
                 
                 .row {
                     display: flex;
                     align-items: center;
-                    margin-bottom: 16px;
-                    background: var(--secondary-background-color, rgba(255,255,255,0.05));
-                    padding: 8px 12px;
+                    margin-bottom: 12px;
+                    background: var(--secondary-background-color, rgba(0,0,0,0.03));
+                    padding: 12px;
                     border-radius: 8px;
+                    border: 1px solid var(--divider-color, rgba(0,0,0,0.05));
                 }
-                .row .label {
+                
+                .label {
                     flex: 1;
                     display: flex;
                     align-items: center;
-                    font-size: 16px;
-                    font-weight: 400;
+                    font-weight: 500;
+                    color: var(--primary-text-color);
                 }
-                .row .label ha-icon {
+                
+                .label ha-icon {
                     margin-right: 12px;
-                    color: var(--secondary-text-color);
+                    color: var(--primary-color);
                 }
                 
                 ha-entity-picker {
                     width: 70%;
+                    --paper-input-container-label: { color: var(--secondary-text-color); };
+                    --paper-input-container-input: { color: var(--primary-text-color); };
                 }
                 
                 input[type="color"] {
@@ -329,12 +339,12 @@ class FlowOpenKairoEditor extends HTMLElement {
                     height: 40px;
                     cursor: pointer;
                     padding: 0;
+                    border-radius: 50%;
+                    overflow: hidden;
                 }
                 
-                /* Animated focus effect */
-                .row:focus-within {
-                    background: var(--secondary-background-color, rgba(255,255,255,0.1));
-                    box-shadow: 0 0 0 1px var(--primary-color, #03a9f4);
+                ha-switch {
+                    margin-left: auto;
                 }
             </style>
 
@@ -345,10 +355,8 @@ class FlowOpenKairoEditor extends HTMLElement {
                 <div class="row">
                     <div class="label"><ha-icon icon="mdi:solar-power"></ha-icon> Solar</div>
                     <ha-entity-picker 
-                        label="Solar Entity"
                         id="picker-solar"
-                        .value="${c.solar || ''}"
-                        .configValue="${'solar'}"
+                        configValue="solar"
                         domain-filter="sensor">
                     </ha-entity-picker>
                 </div>
@@ -356,10 +364,8 @@ class FlowOpenKairoEditor extends HTMLElement {
                 <div class="row">
                     <div class="label"><ha-icon icon="mdi:battery-high"></ha-icon> Battery</div>
                     <ha-entity-picker 
-                        label="Battery Entity"
                         id="picker-battery"
-                        .value="${c.battery || ''}"
-                        .configValue="${'battery'}"
+                        configValue="battery"
                         domain-filter="sensor">
                     </ha-entity-picker>
                 </div>
@@ -367,10 +373,8 @@ class FlowOpenKairoEditor extends HTMLElement {
                 <div class="row">
                     <div class="label"><ha-icon icon="mdi:transmission-tower"></ha-icon> Grid</div>
                     <ha-entity-picker 
-                        label="Grid Entity"
                         id="picker-grid"
-                        .value="${c.grid || ''}"
-                        .configValue="${'grid'}"
+                        configValue="grid"
                         domain-filter="sensor">
                     </ha-entity-picker>
                 </div>
@@ -378,10 +382,8 @@ class FlowOpenKairoEditor extends HTMLElement {
                 <div class="row">
                     <div class="label"><ha-icon icon="mdi:home-lightning"></ha-icon> Home</div>
                     <ha-entity-picker 
-                        label="Home Entity"
                         id="picker-home"
-                        .value="${c.home || ''}"
-                        .configValue="${'home'}"
+                        configValue="home"
                         domain-filter="sensor">
                     </ha-entity-picker>
                 </div>
@@ -407,11 +409,10 @@ class FlowOpenKairoEditor extends HTMLElement {
 
                 <div class="row">
                     <div class="label" style="font-size: 0.9em; opacity: 0.7;">
-                        Invert Battery Logic (Standard: +Charge / -Discharge)
+                        Invert Battery (+/-)
                     </div>
                     <ha-switch 
                         id="invert-battery"
-                        .checked="${c.invert_battery === true}" 
                         configValue="invert_battery">
                     </ha-switch>
                 </div>
@@ -419,20 +420,46 @@ class FlowOpenKairoEditor extends HTMLElement {
             </div>
         `;
 
-        // IMPORTANT: Pass objects and bind events manually for Vanilla JS
+        // --- BINDING START ---
+
+        // Bind Entity Pickers
         this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(picker => {
+            // 1. Set Critical Properties
             picker.hass = this._hass;
-            picker.value = this._config[picker.getAttribute('.configValue')]; // Set initial value correctly
-            picker.addEventListener('value-changed', (e) => this._valueChanged(e));
+
+            // 2. Set Current Value
+            const key = picker.getAttribute('configValue');
+            picker.value = this._config[key];
+
+            // 3. Bind Event
+            picker.addEventListener('value-changed', (e) => {
+                this._valueChanged({
+                    target: {
+                        configValue: key,
+                        value: e.detail.value
+                    }
+                });
+            });
         });
 
-        this.shadowRoot.querySelectorAll('input').forEach(input => {
-            input.addEventListener('input', (e) => this._valueChanged(e)); // 'input' for smoother color slide
+        // Bind Color Inputs
+        this.shadowRoot.querySelectorAll('input[type="color"]').forEach(input => {
+            input.addEventListener('input', (e) => this._valueChanged(e));
         });
 
+        // Bind Switches
         this.shadowRoot.querySelectorAll('ha-switch').forEach(sw => {
+            // Handle checked state manually since we removed attribute binding
+            const key = sw.getAttribute('configValue');
+            sw.checked = this._config[key] === true;
+
             sw.addEventListener('change', (e) => {
-                this._valueChanged({ target: { configValue: 'invert_battery', value: e.target.checked } });
+                this._valueChanged({
+                    target: {
+                        configValue: key,
+                        value: e.target.checked
+                    }
+                });
             });
         });
     }
